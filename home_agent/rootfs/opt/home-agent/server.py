@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import html
 import os
@@ -44,11 +44,51 @@ def validate_snapshot(data):
         return "No home found in snapshot."
     return None
 
+def find_room(data, room_id):
+    home = find_home(data)
+    if not home:
+        return None, None
+    floors = home.get("floors", [])
+    if isinstance(floors, dict):
+        floors = list(floors.values())
+    for floor in floors or []:
+        rooms = floor.get("rooms", [])
+        if isinstance(rooms, dict):
+            rooms = list(rooms.values())
+        for room in rooms or []:
+            if str(room.get("id", "")) == room_id:
+                return floor, room
+    return None, None
+
+def room_page(data, room_id):
+    floor, room = find_room(data, room_id)
+    if not room:
+        return b"<!doctype html><html><body><h1>Room not found</h1><p><a href='/'>Back</a></p></body></html>"
+    name = html.escape(str(room.get("name", room_id)))
+    floor_name = html.escape(str(floor.get("name", "")))
+    out = ["<!doctype html><html><head><meta charset='utf-8'>",
+           "<meta name='viewport' content='width=device-width,initial-scale=1'>",
+           f"<title>{name} - Home Agent</title></head><body>",
+           "<p><a href='/'>← Espås Hills</a></p>",
+           f"<h1>{name}</h1><p>{floor_name}</p>",
+           f"<p><strong>ID:</strong> {html.escape(room_id)}</p>"]
+    systems = room.get("systems", [])
+    if systems:
+        out.append("<h2>Systems</h2><ul>")
+        for item in systems:
+            label = item if isinstance(item, str) else item.get("name", item.get("id", str(item)))
+            out.append(f"<li>{html.escape(str(label))}</li>")
+        out.append("</ul>")
+    out.append("<h2>Raw room data</h2><pre>")
+    out.append(html.escape(yaml.safe_dump(room, allow_unicode=True, sort_keys=False)))
+    out.append("</pre><p><em>Read-only view from the imported snapshot.</em></p></body></html>")
+    return "".join(out).encode("utf-8")
+
 def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.2.1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.3.0</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -68,7 +108,9 @@ def render(data, error=None, notice=None):
                 if isinstance(rooms, dict):
                     rooms = list(rooms.values())
                 for room in rooms or []:
-                    out.append(f"<li>{html.escape(str(room.get('name', room.get('id', 'Room'))))}</li>")
+                    room_id = str(room.get("id", ""))
+                    room_name = html.escape(str(room.get("name", room_id or "Room")))
+                    out.append(f"<li><a href='/room?id={quote(room_id)}'>{room_name}</a></li>")
                 spaces = floor.get("spaces", [])
                 if isinstance(spaces, dict):
                     spaces = list(spaces.values())
@@ -93,7 +135,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if urlparse(self.path).path == "/health":
+        parsed = urlparse(self.path)
+        if parsed.path == "/health":
             body = b"ok"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
@@ -102,6 +145,10 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         data, error = load_home()
+        if parsed.path == "/room" and data and not error:
+            room_id = parse_qs(parsed.query).get("id", [""])[0]
+            self.send_page(room_page(data, room_id))
+            return
         self.send_page(render(data, error))
 
     def do_POST(self):
