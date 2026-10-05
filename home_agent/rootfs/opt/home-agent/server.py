@@ -64,31 +64,64 @@ def room_page(data, room_id):
     floor, room = find_room(data, room_id)
     if not room:
         return b"<!doctype html><html><body><h1>Room not found</h1><p><a href='/'>Back</a></p></body></html>"
+    home = find_home(data)
     name = html.escape(str(room.get("name", room_id)))
     floor_name = html.escape(str(floor.get("name", "")))
+
+    def index(items):
+        return {str(x.get("id")): x for x in (items or []) if isinstance(x, dict) and x.get("id")}
+
+    def resolve(refs, items):
+        idx = index(items)
+        return [idx[r] for r in (refs or []) if r in idx]
+
+    systems = resolve(room.get("system_refs"), home.get("systems"))
+    components = resolve(room.get("component_refs"), home.get("components"))
+    assets = resolve(room.get("asset_refs"), home.get("assets"))
+    related_ids = {room_id}
+    related_ids.update(str(x.get("id")) for x in systems + components + assets if x.get("id"))
+
+    def related(items):
+        return [x for x in (items or []) if isinstance(x, dict)
+                and related_ids.intersection(set(x.get("related_object_refs", []) or []))]
+
+    def section(title, items):
+        if not items:
+            return ""
+        rows = []
+        for item in items:
+            label = str(item.get("name") or item.get("id") or "Unknown")
+            rows.append("<li>" + html.escape(label) + "</li>")
+        return "<h2>" + html.escape(title) + "</h2><ul>" + "".join(rows) + "</ul>"
+
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            f"<title>{name} - Home Agent</title></head><body>",
            "<p><a href='/'>← Espås Hills</a></p>",
-           f"<h1>{name}</h1><p>{floor_name}</p>",
-           f"<p><strong>ID:</strong> {html.escape(room_id)}</p>"]
-    systems = room.get("systems", [])
-    if systems:
-        out.append("<h2>Systems</h2><ul>")
-        for item in systems:
-            label = item if isinstance(item, str) else item.get("name", item.get("id", str(item)))
-            out.append(f"<li>{html.escape(str(label))}</li>")
-        out.append("</ul>")
-    out.append("<h2>Raw room data</h2><pre>")
+           f"<h1>{name}</h1><p>{floor_name}</p>"]
+
+    features = room.get("features", []) or []
+    if features:
+        out.append("<h2>Features</h2><ul>" + "".join("<li>" + html.escape(str(x)) + "</li>" for x in features) + "</ul>")
+
+    out.append(section("Systems", systems))
+    out.append(section("Assets", assets))
+    out.append(section("Components", components))
+    out.append(section("Documents", related(home.get("documents"))))
+    out.append(section("History", related(home.get("events"))))
+    out.append(section("Service", related(home.get("service_history"))))
+    out.append(section("Maintenance", related(home.get("maintenance"))))
+    out.append(section("Costs", related(home.get("costs"))))
+    out.append("<details><summary>Raw room data</summary><pre>")
     out.append(html.escape(yaml.safe_dump(room, allow_unicode=True, sort_keys=False)))
-    out.append("</pre><p><em>Read-only view from the imported snapshot.</em></p></body></html>")
+    out.append("</pre></details><p><em>Read-only. Only explicit snapshot relationships are shown.</em></p></body></html>")
     return "".join(out).encode("utf-8")
 
 def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.3.0</p>"]
+           "<h1>Home Agent</h1><p>Version 0.4.0</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
