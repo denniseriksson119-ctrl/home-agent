@@ -1,13 +1,13 @@
 # Home Agent add-on
 
-## 0.2.0
+## 0.2.1
 
-The add-on now has persistent local storage and can read an existing Home Agent YAML snapshot from:
+The web interface can import an existing Home Agent YAML snapshot.
 
-`/data/home.yaml`
+The upload is validated before it replaces the local snapshot. A valid snapshot must use `schema: home_agent` and contain at least one home. The file is stored privately as `/data/home.yaml` in the add-on's persistent local storage.
 
-It displays the imported home's floors, rooms, and spaces read-only.
+The imported structure is displayed read-only: home, floors, rooms, and spaces.
 
-The repository contains no private house data. The YAML snapshot stays in the add-on's local Home Assistant data storage.
+Private house data is not stored in this public repository.
 
 Still intentionally excluded: editing, database migration, Drive sync, AI, and Home Assistant device integration.
