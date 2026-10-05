@@ -1,0 +1,15 @@
+name: Home Agent
+version: "0.1.0"
+slug: home_agent
+description: Minimal Home Agent service for Home Assistant
+url: https://github.com/denniseriksson119-ctrl/home-agent
+arch:
+  - aarch64
+startup: application
+boot: auto
+init: false
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: Home Agent web interface
+webui: http://[HOST]:[PORT:8099]
