@@ -1,13 +1,16 @@
 name: Home Agent
-version: "0.1.0"
+version: "0.2.0"
 slug: home_agent
-description: Minimal Home Agent service for Home Assistant
+description: Local Home Agent service for Home Assistant
 url: https://github.com/denniseriksson119-ctrl/home-agent
 arch:
   - aarch64
 startup: application
 boot: auto
 init: false
+map:
+  - type: data
+    read_only: false
 ports:
   8099/tcp: 8099
 ports_description:
