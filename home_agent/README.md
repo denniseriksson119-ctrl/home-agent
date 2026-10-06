@@ -1,13 +1,17 @@
 # Home Agent add-on
 
-## 0.4.0
+## 0.5.0
 
-Room pages now resolve relationships already present in the imported snapshot.
+Home Agent now has a persistent local SQLite store at `/data/home_agent.db`.
 
-The pilot is Kök + matplats, but the resolver is generic. It follows only explicit references from the room and related_object_refs in the snapshot.
+On first start after upgrading, the existing private `/data/home.yaml` snapshot is automatically imported into SQLite. The YAML file is kept unchanged as the bootstrap/source snapshot.
 
-The room page can show features, systems, assets, components, documents, history, service, maintenance and costs when those relationships are explicitly stored.
+New YAML imports are validated, atomically preserved as `/data/home.yaml`, and imported into SQLite in one local operation.
 
-No relationships are inferred from names or from expected house topology. Raw room YAML remains available for verification.
+SQLite contains:
+- the complete snapshot text
+- an object index for homes, floors, rooms, spaces, systems, components, assets, documents, events, service history, maintenance, projects, costs, suppliers, reminders and open items
 
-The imported snapshot remains read-only and private in the add-on's persistent local storage.
+The web UI reads its working snapshot from SQLite. Version 0.5 remains read-only: no editing, Drive sync, AI or Home Assistant device integration is added yet.
+
+Private house data stays in the add-on's persistent local storage and is never committed to this repository.
