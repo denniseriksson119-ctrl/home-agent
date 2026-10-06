@@ -37,6 +37,14 @@ def init_db():
             parent_id TEXT,
             yaml_text TEXT NOT NULL
         )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS change_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            committed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            object_id TEXT NOT NULL,
+            field_name TEXT NOT NULL,
+            old_value TEXT,
+            new_value TEXT NOT NULL
+        )""")
 
 def object_rows(data):
     home = find_home(data)
@@ -152,6 +160,13 @@ def propose_room_note(data, room_id, note):
     diff = "".join(difflib.unified_diff(yaml.safe_dump(room, allow_unicode=True, sort_keys=False).splitlines(True), yaml.safe_dump(after, allow_unicode=True, sort_keys=False).splitlines(True), fromfile="current", tofile="proposed"))
     PENDING_FILE.write_text(yaml.safe_dump({"room_id": room_id, "new_value": note, "diff": diff}, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
+def room_history(object_id, limit=10):
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        return db.execute("""SELECT committed_at, field_name, old_value, new_value
+                             FROM change_log WHERE object_id=?
+                             ORDER BY id DESC LIMIT ?""", (object_id, limit)).fetchall()
+
 def commit_pending(data):
     proposal = pending_change()
     if not proposal:
@@ -159,13 +174,29 @@ def commit_pending(data):
     floor, room = find_room(data, str(proposal.get("room_id", "")))
     if not room:
         raise ValueError("Room not found.")
+    new_value = str(proposal["new_value"])
     old = room.get("notes")
-    room["notes"] = proposal["new_value"]
-    save_working_data(data)
+    if old == new_value:
+        PENDING_FILE.unlink(missing_ok=True)
+        return str(room.get("id")), False
+    room["notes"] = new_value
+    text = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    rows = object_rows(data)
+    init_db()
     with sqlite3.connect(DB_FILE) as db:
-        db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)", (str(room.get("id")), "notes", None if old is None else str(old), str(proposal["new_value"])))
+        db.execute("BEGIN IMMEDIATE")
+        db.execute("DELETE FROM objects")
+        db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
+        db.execute("""INSERT INTO snapshot(id, schema_version, yaml_text, imported_at)
+                      VALUES(1, ?, ?, CURRENT_TIMESTAMP)
+                      ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
+                      yaml_text=excluded.yaml_text, imported_at=CURRENT_TIMESTAMP""",
+                   (str(data.get("schema_version", "")), text))
+        db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)",
+                   (str(room.get("id")), "notes", None if old is None else str(old), new_value))
         db.commit()
     PENDING_FILE.unlink(missing_ok=True)
+    return str(room.get("id")), True
 
 def room_page(data, room_id):
     floor, room = find_room(data, room_id)
@@ -221,6 +252,12 @@ def room_page(data, room_id):
     out.append(section("Costs", related(home.get("costs"))))
     if room.get("notes"):
         out.append("<h2>Notes</h2><p>" + html.escape(str(room.get("notes"))) + "</p>")
+    history = room_history(room_id)
+    if history:
+        out.append("<h2>Local change history</h2><ul>")
+        for committed_at, field_name, old_value, new_value in history:
+            out.append("<li>" + html.escape(str(committed_at)) + " — " + html.escape(str(field_name)) + ": " + html.escape(str(new_value)) + "</li>")
+        out.append("</ul>")
     proposal = pending_change()
     if proposal and str(proposal.get("room_id")) == room_id:
         out.append("<h2>Pending change</h2><pre>" + html.escape(str(proposal.get("diff", ""))) + "</pre>")
@@ -236,7 +273,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.6.0</p>"]
+           "<h1>Home Agent</h1><p>Version 0.6.1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -313,8 +350,14 @@ class Handler(BaseHTTPRequestHandler):
                 if path == "/commit":
                     proposal = pending_change()
                     room_id = str(proposal.get("room_id", "")) if proposal else ""
-                    commit_pending(data)
-                    self.send_page(room_page(data, room_id))
+                    committed_room_id, changed = commit_pending(data)
+                    fresh, load_error = load_home()
+                    if load_error:
+                        raise ValueError(load_error)
+                    notice = "Change saved locally." if changed else "Change was already saved; pending proposal cleared."
+                    body = room_page(fresh, committed_room_id).decode("utf-8")
+                    body = body.replace("<h1>", "<p><strong>" + html.escape(notice) + "</strong></p><h1>", 1)
+                    self.send_page(body.encode("utf-8"))
                     return
                 length = int(self.headers.get("Content-Length", "0"))
                 fields = parse_qs(self.rfile.read(length).decode("utf-8"))
