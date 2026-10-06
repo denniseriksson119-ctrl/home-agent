@@ -8,6 +8,8 @@ import html
 import os
 import sqlite3
 import tempfile
+import uuid
+from datetime import datetime, timezone
 import yaml
 
 HOST = "0.0.0.0"
@@ -148,17 +150,31 @@ def save_working_data(data):
 def pending_change():
     return yaml.safe_load(PENDING_FILE.read_text(encoding="utf-8")) if PENDING_FILE.exists() else None
 
-def propose_room_note(data, room_id, note):
+def add_room_note(data, room_id, note):
     note = note.strip()
     if not note:
         raise ValueError("Note cannot be empty.")
     floor, room = find_room(data, room_id)
     if not room:
         raise ValueError("Room not found.")
-    after = copy.deepcopy(room)
-    after["notes"] = note
-    diff = "".join(difflib.unified_diff(yaml.safe_dump(room, allow_unicode=True, sort_keys=False).splitlines(True), yaml.safe_dump(after, allow_unicode=True, sort_keys=False).splitlines(True), fromfile="current", tofile="proposed"))
-    PENDING_FILE.write_text(yaml.safe_dump({"room_id": room_id, "new_value": note, "diff": diff}, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    existing = room.get("notes")
+    if isinstance(existing, str) and existing.strip():
+        room["notes"] = [{"id": "note_legacy_" + uuid.uuid4().hex[:12],
+                          "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "text": existing.strip(), "source": "legacy_local"}]
+    elif not isinstance(existing, list):
+        room["notes"] = []
+    entry = {"id": "note_" + uuid.uuid4().hex[:12],
+             "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+             "text": note, "source": "user"}
+    room["notes"].append(entry)
+    save_working_data(data)
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)",
+                   (room_id, "note_added", None, note))
+        db.commit()
+    return entry
+
 
 def room_history(object_id, limit=10):
     init_db()
@@ -250,20 +266,27 @@ def room_page(data, room_id):
     out.append(section("Service", related(home.get("service_history"))))
     out.append(section("Maintenance", related(home.get("maintenance"))))
     out.append(section("Costs", related(home.get("costs"))))
-    if room.get("notes"):
-        out.append("<h2>Notes</h2><p>" + html.escape(str(room.get("notes"))) + "</p>")
+    notes = room.get("notes")
+    if notes:
+        out.append("<h2>Notes</h2><ul>")
+        if isinstance(notes, list):
+            for note in reversed(notes):
+                if isinstance(note, dict):
+                    stamp = str(note.get("created_at", ""))
+                    text_value = str(note.get("text", ""))
+                    out.append("<li>" + html.escape(stamp) + " — " + html.escape(text_value) + "</li>")
+                else:
+                    out.append("<li>" + html.escape(str(note)) + "</li>")
+        else:
+            out.append("<li>" + html.escape(str(notes)) + "</li>")
+        out.append("</ul>")
     history = room_history(room_id)
     if history:
         out.append("<h2>Local change history</h2><ul>")
         for committed_at, field_name, old_value, new_value in history:
             out.append("<li>" + html.escape(str(committed_at)) + " — " + html.escape(str(field_name)) + ": " + html.escape(str(new_value)) + "</li>")
         out.append("</ul>")
-    proposal = pending_change()
-    if proposal and str(proposal.get("room_id")) == room_id:
-        out.append("<h2>Pending change</h2><pre>" + html.escape(str(proposal.get("diff", ""))) + "</pre>")
-        out.append("<form method='post' action='/commit'><button type='submit'>Approve and commit</button></form><form method='post' action='/discard'><button type='submit'>Discard</button></form>")
-    else:
-        out.append("<h2>Propose local note</h2><form method='post' action='/propose'><input type='hidden' name='room_id' value='" + html.escape(room_id) + "'><input name='note' required><button type='submit'>Show diff</button></form>")
+    out.append("<h2>Add note</h2><form method='post' action='/add-note'><input type='hidden' name='room_id' value='" + html.escape(room_id) + "'><input name='note' required><button type='submit'>Save</button></form>")
     out.append("<details><summary>Raw room data</summary><pre>")
     out.append(html.escape(yaml.safe_dump(room, allow_unicode=True, sort_keys=False)))
     out.append("</pre></details><p><em>Read-only. Only explicit snapshot relationships are shown.</em></p></body></html>")
@@ -273,7 +296,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.6.1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.6.2</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -338,32 +361,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path in ("/propose", "/commit", "/discard"):
+        if path == "/add-note":
             try:
                 data, error = load_home()
                 if error or not data:
                     raise ValueError(error or "No data loaded.")
-                if path == "/discard":
-                    PENDING_FILE.unlink(missing_ok=True)
-                    self.send_page(render(data, notice="Pending change discarded."))
-                    return
-                if path == "/commit":
-                    proposal = pending_change()
-                    room_id = str(proposal.get("room_id", "")) if proposal else ""
-                    committed_room_id, changed = commit_pending(data)
-                    fresh, load_error = load_home()
-                    if load_error:
-                        raise ValueError(load_error)
-                    notice = "Change saved locally." if changed else "Change was already saved; pending proposal cleared."
-                    body = room_page(fresh, committed_room_id).decode("utf-8")
-                    body = body.replace("<h1>", "<p><strong>" + html.escape(notice) + "</strong></p><h1>", 1)
-                    self.send_page(body.encode("utf-8"))
-                    return
                 length = int(self.headers.get("Content-Length", "0"))
                 fields = parse_qs(self.rfile.read(length).decode("utf-8"))
                 room_id = fields.get("room_id", [""])[0]
-                propose_room_note(data, room_id, fields.get("note", [""])[0])
-                self.send_page(room_page(data, room_id))
+                add_room_note(data, room_id, fields.get("note", [""])[0])
+                fresh, load_error = load_home()
+                if load_error:
+                    raise ValueError(load_error)
+                body = room_page(fresh, room_id).decode("utf-8")
+                body = body.replace("<h1>", "<p><strong>Note saved locally.</strong></p><h1>", 1)
+                self.send_page(body.encode("utf-8"))
                 return
             except Exception as exc:
                 data, _ = load_home()
