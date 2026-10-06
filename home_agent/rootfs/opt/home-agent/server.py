@@ -4,23 +4,94 @@ from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import html
 import os
+import sqlite3
 import tempfile
 import yaml
 
 HOST = "0.0.0.0"
 PORT = 8099
 DATA_FILE = Path("/data/home.yaml")
+DB_FILE = Path("/data/home_agent.db")
 MAX_UPLOAD = 5 * 1024 * 1024
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
+def init_db():
+    DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("""CREATE TABLE IF NOT EXISTS snapshot (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            schema_version TEXT,
+            yaml_text TEXT NOT NULL,
+            imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS objects (
+            object_id TEXT PRIMARY KEY,
+            object_type TEXT NOT NULL,
+            name TEXT,
+            parent_id TEXT,
+            yaml_text TEXT NOT NULL
+        )""")
+
+def object_rows(data):
+    home = find_home(data)
+    if not home:
+        return []
+    rows = []
+    def add(item, kind, parent=None):
+        if isinstance(item, dict) and item.get("id"):
+            rows.append((str(item["id"]), kind, str(item.get("name", "")), parent,
+                         yaml.safe_dump(item, allow_unicode=True, sort_keys=False)))
+    add(home, "home")
+    for floor in home.get("floors", []) or []:
+        add(floor, "floor", str(home.get("id", "")))
+        floor_id = str(floor.get("id", ""))
+        for room in floor.get("rooms", []) or []:
+            add(room, "room", floor_id)
+        for space in floor.get("spaces", []) or []:
+            add(space, "space", floor_id)
+    for key in ("systems", "components", "assets", "documents", "events",
+                "service_history", "maintenance", "projects", "costs",
+                "suppliers", "reminders", "open_items"):
+        for item in home.get(key, []) or []:
+            add(item, key.rstrip("s"), str(home.get("id", "")))
+    return rows
+
+def import_database(data, text):
+    init_db()
+    rows = object_rows(data)
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("BEGIN")
+        db.execute("DELETE FROM objects")
+        db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
+        db.execute("""INSERT INTO snapshot(id, schema_version, yaml_text, imported_at)
+                      VALUES(1, ?, ?, CURRENT_TIMESTAMP)
+                      ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
+                      yaml_text=excluded.yaml_text, imported_at=CURRENT_TIMESTAMP""",
+                   (str(data.get("schema_version", "")), text))
+        db.commit()
+
+def bootstrap_database():
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        exists = db.execute("SELECT 1 FROM snapshot WHERE id=1").fetchone()
+    if not exists and DATA_FILE.exists():
+        text = DATA_FILE.read_text(encoding="utf-8")
+        data = yaml.safe_load(text)
+        error = validate_snapshot(data)
+        if not error:
+            import_database(data, text)
+
 def load_home():
-    if not DATA_FILE.exists():
-        return None, None
     try:
-        return load_yaml(DATA_FILE), None
+        bootstrap_database()
+        with sqlite3.connect(DB_FILE) as db:
+            row = db.execute("SELECT yaml_text FROM snapshot WHERE id=1").fetchone()
+        if not row:
+            return None, None
+        return yaml.safe_load(row[0]), None
     except Exception as exc:
         return None, str(exc)
 
@@ -121,7 +192,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.4.0</p>"]
+           "<h1>Home Agent</h1><p>Version 0.5.0</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -219,7 +290,8 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(tmp_name):
                     os.unlink(tmp_name)
 
-            self.send_page(render(data, notice="Snapshot imported successfully."))
+            import_database(data, text)
+            self.send_page(render(data, notice="Snapshot imported successfully into local SQLite."))
         except Exception as exc:
             data, existing_error = load_home()
             self.send_page(render(data, error=str(exc) if not existing_error else existing_error), 400)
