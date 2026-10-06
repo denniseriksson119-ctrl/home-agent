@@ -2,6 +2,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, quote
 import cgi
+import copy
+import difflib
 import html
 import os
 import sqlite3
@@ -12,6 +14,7 @@ HOST = "0.0.0.0"
 PORT = 8099
 DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
+PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
 
 def load_yaml(path):
@@ -131,6 +134,39 @@ def find_room(data, room_id):
                 return floor, room
     return None, None
 
+def save_working_data(data):
+    import_database(data, yaml.safe_dump(data, allow_unicode=True, sort_keys=False))
+
+def pending_change():
+    return yaml.safe_load(PENDING_FILE.read_text(encoding="utf-8")) if PENDING_FILE.exists() else None
+
+def propose_room_note(data, room_id, note):
+    note = note.strip()
+    if not note:
+        raise ValueError("Note cannot be empty.")
+    floor, room = find_room(data, room_id)
+    if not room:
+        raise ValueError("Room not found.")
+    after = copy.deepcopy(room)
+    after["notes"] = note
+    diff = "".join(difflib.unified_diff(yaml.safe_dump(room, allow_unicode=True, sort_keys=False).splitlines(True), yaml.safe_dump(after, allow_unicode=True, sort_keys=False).splitlines(True), fromfile="current", tofile="proposed"))
+    PENDING_FILE.write_text(yaml.safe_dump({"room_id": room_id, "new_value": note, "diff": diff}, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+def commit_pending(data):
+    proposal = pending_change()
+    if not proposal:
+        raise ValueError("No pending change.")
+    floor, room = find_room(data, str(proposal.get("room_id", "")))
+    if not room:
+        raise ValueError("Room not found.")
+    old = room.get("notes")
+    room["notes"] = proposal["new_value"]
+    save_working_data(data)
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)", (str(room.get("id")), "notes", None if old is None else str(old), str(proposal["new_value"])))
+        db.commit()
+    PENDING_FILE.unlink(missing_ok=True)
+
 def room_page(data, room_id):
     floor, room = find_room(data, room_id)
     if not room:
@@ -183,6 +219,14 @@ def room_page(data, room_id):
     out.append(section("Service", related(home.get("service_history"))))
     out.append(section("Maintenance", related(home.get("maintenance"))))
     out.append(section("Costs", related(home.get("costs"))))
+    if room.get("notes"):
+        out.append("<h2>Notes</h2><p>" + html.escape(str(room.get("notes"))) + "</p>")
+    proposal = pending_change()
+    if proposal and str(proposal.get("room_id")) == room_id:
+        out.append("<h2>Pending change</h2><pre>" + html.escape(str(proposal.get("diff", ""))) + "</pre>")
+        out.append("<form method='post' action='/commit'><button type='submit'>Approve and commit</button></form><form method='post' action='/discard'><button type='submit'>Discard</button></form>")
+    else:
+        out.append("<h2>Propose local note</h2><form method='post' action='/propose'><input type='hidden' name='room_id' value='" + html.escape(room_id) + "'><input name='note' required><button type='submit'>Show diff</button></form>")
     out.append("<details><summary>Raw room data</summary><pre>")
     out.append(html.escape(yaml.safe_dump(room, allow_unicode=True, sort_keys=False)))
     out.append("</pre></details><p><em>Read-only. Only explicit snapshot relationships are shown.</em></p></body></html>")
@@ -192,7 +236,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.5.0</p>"]
+           "<h1>Home Agent</h1><p>Version 0.6.0</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -256,20 +300,41 @@ class Handler(BaseHTTPRequestHandler):
         self.send_page(render(data, error))
 
     def do_POST(self):
-        if urlparse(self.path).path != "/import":
+        path = urlparse(self.path).path
+        if path in ("/propose", "/commit", "/discard"):
+            try:
+                data, error = load_home()
+                if error or not data:
+                    raise ValueError(error or "No data loaded.")
+                if path == "/discard":
+                    PENDING_FILE.unlink(missing_ok=True)
+                    self.send_page(render(data, notice="Pending change discarded."))
+                    return
+                if path == "/commit":
+                    proposal = pending_change()
+                    room_id = str(proposal.get("room_id", "")) if proposal else ""
+                    commit_pending(data)
+                    self.send_page(room_page(data, room_id))
+                    return
+                length = int(self.headers.get("Content-Length", "0"))
+                fields = parse_qs(self.rfile.read(length).decode("utf-8"))
+                room_id = fields.get("room_id", [""])[0]
+                propose_room_note(data, room_id, fields.get("note", [""])[0])
+                self.send_page(room_page(data, room_id))
+                return
+            except Exception as exc:
+                data, _ = load_home()
+                self.send_page(render(data, error=str(exc)), 400)
+                return
+        if path != "/import":
             self.send_error(404)
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length <= 0 or length > MAX_UPLOAD:
                 raise ValueError("Upload is empty or larger than 5 MB.")
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")},
-            )
-            item = form["snapshot"]
-            raw = item.file.read(MAX_UPLOAD + 1)
+            form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")})
+            raw = form["snapshot"].file.read(MAX_UPLOAD + 1)
             if len(raw) > MAX_UPLOAD:
                 raise ValueError("File is larger than 5 MB.")
             text = raw.decode("utf-8")
@@ -277,19 +342,15 @@ class Handler(BaseHTTPRequestHandler):
             validation_error = validate_snapshot(data)
             if validation_error:
                 raise ValueError(validation_error)
-
             DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
             fd, tmp_name = tempfile.mkstemp(prefix="home-", suffix=".yaml", dir=str(DATA_FILE.parent))
             try:
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    f.write(text)
-                    f.flush()
-                    os.fsync(f.fileno())
+                with os.fdopen(fd, "w", encoding="utf-8") as out:
+                    out.write(text); out.flush(); os.fsync(out.fileno())
                 os.replace(tmp_name, DATA_FILE)
             finally:
                 if os.path.exists(tmp_name):
                     os.unlink(tmp_name)
-
             import_database(data, text)
             self.send_page(render(data, notice="Snapshot imported successfully into local SQLite."))
         except Exception as exc:
