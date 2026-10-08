@@ -1,23 +1,19 @@
 # Home Agent documentation
 
-This directory contains design and engineering documentation for Home Agent.
+This directory contains the normative design and engineering documentation for Home Agent.
 
-## Document hierarchy
+## Active document hierarchy
+1. **System architecture** — `architecture/HOME_AGENT_SPEC.md`
+2. **Data model / identity / provenance** — `architecture/DATA_MODEL.md`
+3. **Processing & AI workflow** — `workflow/PROCESSING_AI_WORKFLOW.md`
+4. **UI specification** — `ui/HOME_AGENT_UI_SPEC.md`
+5. **Design decisions** — `decisions/DECISIONS.md`
+6. **Implementation** — code conforms to the applicable contracts above.
 
-1. **Architecture / system specification** — what Home Agent is, its data model and system-level rules.
-2. **Workflows** — operational processing rules.
-3. **UI specification** — how users interact with the product.
-4. **Design decisions** — why important product/design choices were made.
-5. **Implementation** — code should conform to the applicable specifications above.
-
-## Versioning policy
-
-Git is the change history for documentation stored in this repository. The imported system specification preserves its original approved snapshot metadata. Current workflow files are imported from the verified Drive Current workflow folder without rewriting their content.
-
-The UI specification starts as a living draft. Stable milestones can later be tagged/released when the design contract is sufficiently mature.
+## Legacy workflow material
+Older imported Drive-era workflow documents are historical/superseded unless an active specification explicitly references a still-valid rule. They do not override the local-first architecture, data model or processing workflow.
 
 ## Development flow
-
 **Idea → discussion/prototype → decision → spec/decision update → implementation → test against spec → PR → merge**
 
-When implementation and specification differ, explicitly decide which should change. Experimental behavior does not automatically become product policy.
+Experimental implementation does not automatically become product policy.
