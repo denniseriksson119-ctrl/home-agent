@@ -100,3 +100,29 @@ Confidence belongs to individual claims/matches. Proposed operations retain supp
 **Status:** Accepted
 
 Proposal/run identity is stable. Replaying an accepted proposal cannot duplicate effects. Backend revalidates current state before commit and does not blindly apply proposals based on stale context.
+
+
+## DD-025 — Backup, export and source archive are separate
+**Status:** Accepted
+
+Operational backup, logical export and permanent original-source archive are distinct artifact classes with different purposes.
+
+## DD-026 — Local commits do not depend on Drive backup
+**Status:** Accepted
+
+A validated atomic local commit is complete without waiting for Drive. Backup/archive synchronization is asynchronous, verified and retryable.
+
+## DD-027 — Restore preserves permanent identity
+**Status:** Accepted
+
+Restore or device replacement preserves stored permanent entity IDs and validates integrity/compatibility before active state is replaced.
+
+## DD-028 — Backups require restore verification
+**Status:** Accepted
+
+Uploaded artifacts alone do not prove recoverability. Backup design includes checksum/manifest validation and a non-destructive restore verification path.
+
+## DD-029 — Archive paths are not identity
+**Status:** Accepted
+
+Source/domain identity remains permanent when archived files move or are renamed. Drive paths and provider IDs are external references only.
