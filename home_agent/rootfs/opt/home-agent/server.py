@@ -463,7 +463,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.1b1</p><p><a href="/inbox">Inbox</a></p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.1b1</p><p><a href='/inbox'>Inbox</a></p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
