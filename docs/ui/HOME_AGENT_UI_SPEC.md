@@ -78,17 +78,17 @@ The intake supports two first-class paths.
 
 ### Analyze now
 
-**Input → local source capture → AI analysis → match existing objects → semantic proposal → user review when required → local database commit → automatic archive/backup as applicable**
+Input is captured safely first. The normative technical pipeline is defined in `docs/workflow/PROCESSING_AI_WORKFLOW.md`; the UI continues directly into analysis/review when requested.
 
 ### Save for later
 
-**Input → local source capture → Home Agent Inbox → later batch/selective analysis → match existing objects → semantic proposal → user review when required → local database commit → automatic archive/backup as applicable**
+Input is captured safely into Home Agent Inbox. Later processing follows `docs/workflow/PROCESSING_AI_WORKFLOW.md`, normally agent-led across the queue with manual selection as a secondary option.
 
 The first screen should therefore support a primary **Analysera nu** action and a secondary **Spara i Inbox** action.
 
 Saving to Inbox is capture, not registration of extracted facts. It must be fast and must not require the user to classify the material first.
 
-Inbox can contain multiple related items and later analysis may consider selected items together. This supports workflows such as collecting photos, an invoice and a manual during work in the home and processing them later.
+Inbox can contain multiple related items and later analysis may consider likely related items together. This supports workflows such as collecting photos, an invoice and a manual during work in the home and processing them later.
 
 A Drive Inbox may remain as an optional import channel. Files discovered there should be imported/registered into Home Agent Inbox; the Drive folder itself is not the operational queue or source of truth.
 
