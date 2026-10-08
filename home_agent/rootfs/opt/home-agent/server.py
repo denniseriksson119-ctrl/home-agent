@@ -385,17 +385,15 @@ def commit_pending(data):
 def room_page(data, room_id):
     floor, room = find_room(data, room_id)
     if not room:
-        return b"<!doctype html><html><body><h1>Room not found</h1><p><a href='/'>Back</a></p></body></html>"
+        return ui.room_detail_page(room_id, None, None, {}, [])
     home = find_home(data)
-    name = html.escape(str(room.get("name", room_id)))
-    floor_name = html.escape(str(floor.get("name", "")))
 
     def index(items):
         return {str(x.get("id")): x for x in (items or []) if isinstance(x, dict) and x.get("id")}
 
     def resolve(refs, items):
         idx = index(items)
-        return [idx[r] for r in (refs or []) if r in idx]
+        return [idx[str(ref)] for ref in (refs or []) if str(ref) in idx]
 
     systems = resolve(room.get("system_refs"), home.get("systems"))
     components = resolve(room.get("component_refs"), home.get("components"))
@@ -405,60 +403,17 @@ def room_page(data, room_id):
 
     def related(items):
         return [x for x in (items or []) if isinstance(x, dict)
-                and related_ids.intersection(set(x.get("related_object_refs", []) or []))]
+                and related_ids.intersection(set(str(ref) for ref in (x.get("related_object_refs", []) or [])))]
 
-    def section(title, items):
-        if not items:
-            return ""
-        rows = []
-        for item in items:
-            label = str(item.get("name") or item.get("id") or "Unknown")
-            rows.append("<li>" + html.escape(label) + "</li>")
-        return "<h2>" + html.escape(title) + "</h2><ul>" + "".join(rows) + "</ul>"
-
-    out = ["<!doctype html><html><head><meta charset='utf-8'>",
-           "<meta name='viewport' content='width=device-width,initial-scale=1'>",
-           f"<title>{name} - Home Agent</title></head><body>",
-           "<p><a href='/'>← Home</a></p>",
-           f"<h1>{name}</h1><p>{floor_name}</p>"]
-
-    features = room.get("features", []) or []
-    if features:
-        out.append("<h2>Features</h2><ul>" + "".join("<li>" + html.escape(str(x)) + "</li>" for x in features) + "</ul>")
-
-    out.append(section("Systems", systems))
-    out.append(section("Assets", assets))
-    out.append(section("Components", components))
-    out.append(section("Documents", related(home.get("documents"))))
-    out.append(section("History", related(home.get("events"))))
-    out.append(section("Service", related(home.get("service_history"))))
-    out.append(section("Maintenance", related(home.get("maintenance"))))
-    out.append(section("Costs", related(home.get("costs"))))
-    notes = room.get("notes")
-    if notes:
-        out.append("<h2>Notes</h2><ul>")
-        if isinstance(notes, list):
-            for note in reversed(notes):
-                if isinstance(note, dict):
-                    stamp = str(note.get("created_at", ""))
-                    text_value = str(note.get("text", ""))
-                    out.append("<li>" + html.escape(stamp) + " — " + html.escape(text_value) + "</li>")
-                else:
-                    out.append("<li>" + html.escape(str(note)) + "</li>")
-        else:
-            out.append("<li>" + html.escape(str(notes)) + "</li>")
-        out.append("</ul>")
-    history = room_history(room_id)
-    if history:
-        out.append("<h2>Local change history</h2><ul>")
-        for committed_at, field_name, old_value, new_value in history:
-            out.append("<li>" + html.escape(str(committed_at)) + " — " + html.escape(str(field_name)) + ": " + html.escape(str(new_value)) + "</li>")
-        out.append("</ul>")
-    out.append("<h2>Add note</h2><form method='post' action='/add-note'><input type='hidden' name='room_id' value='" + html.escape(room_id) + "'><input name='note' required><button type='submit'>Save</button></form>")
-    out.append("<details><summary>Raw room data</summary><pre>")
-    out.append(html.escape(yaml.safe_dump(room, allow_unicode=True, sort_keys=False)))
-    out.append("</pre></details><p><em>Read-only. Only explicit snapshot relationships are shown.</em></p></body></html>")
-    return "".join(out).encode("utf-8")
+    sections = {
+        "System": systems, "Utrustning": assets, "Komponenter": components,
+        "Dokument": related(home.get("documents")),
+        "Händelser": related(home.get("events")),
+        "Service": related(home.get("service_history")),
+        "Underhåll": related(home.get("maintenance")),
+        "Kostnader": related(home.get("costs")),
+    }
+    return ui.room_detail_page(room_id, floor, room, sections, room_history(room_id))
 
 def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
