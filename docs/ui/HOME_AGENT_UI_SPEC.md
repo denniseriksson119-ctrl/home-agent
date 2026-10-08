@@ -23,8 +23,6 @@ This document defines how users interact with Home Agent. It complements the sys
 12. **Human-friendly presentation.** Technical timestamps remain in storage; normal UI uses localized, readable dates and times.
 13. **Capture and processing are separate.** Users can quickly collect material now and analyze it later. Immediate AI processing must never be required just to preserve new source material.
 14. **Inbox is a Home Agent concept.** Drive Inbox may be an ingest channel, but the product's Inbox/queue belongs to Home Agent and can receive material from multiple sources.
-13. **Capture and processing are separate.** Users must be able to collect text, photos and documents quickly without being forced to analyze or classify them immediately. Captured material can wait in Home Agent Inbox for later processing.
-14. **Inbox is a Home Agent concept, not a Drive folder.** Drive Inbox may be an import channel, but Home Agent owns the processing state and queue semantics.
 
 ## Navigation direction
 
@@ -106,15 +104,21 @@ Simple manual context-specific input can bypass AI when interpretation is unnece
 
 Inbox is the central queue for captured but not yet processed source material.
 
+The default action is **Analysera Inbox**. The user should not normally have to select items first. Home Agent determines the next unprocessed work, groups likely related sources when useful and advances through the queue.
+
 It should support:
 - quick capture without classification
 - text, photos and documents
-- visible count/status of unprocessed material
-- selecting some or all items
-- batch analysis
-- joint analysis of related items when useful
+- visible progress and understandable processing state
+- default whole-Inbox processing
+- automatic grouping of likely related items
+- pause / **Fortsätt senare**
+- deterministic resume from persisted local state
+- manual selection as a secondary/advanced option
 - retaining source provenance
 - later semantic review before structured facts are committed
+
+The UI must distinguish **analyzed** from **registered in Home Graph**. An item can be fully analyzed while a semantic proposal is still waiting for user review.
 
 A Drive Inbox can remain a convenient external drop location. Home Agent imports/synchronizes those files into its own Inbox rather than treating the Drive folder as the operational queue.
 
