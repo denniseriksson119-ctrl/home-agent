@@ -7,12 +7,12 @@
 Turn captured source material into traceable structured Home Agent knowledge without making the user manage files, database fields or processing mechanics.
 
 ## 2. Default pipeline
-**Capture/Ingest → Exact dedupe → Parse/Extract → Semantic match/dedupe → Group → Analyze → Proposal → Review when required → Commit → Archive → Cleanup ingest source**
+**Capture/IngestOccurrence → establish local Source custody → Exact dedupe/resolve Source → Parse/Extract → Semantic match/dedupe → Group → Analyze → Proposal → Review when required → Commit → Archive → Cleanup ingest occurrence**
 
 Stages may be skipped only when their purpose is not applicable. Each completed stage persists enough deterministic state to resume safely.
 
 ## 3. Capture / ingest
-Backend first secures and registers the source locally with permanent IDs, origin and checksums. Ingest must not require AI.
+Backend first records the arrival as an IngestOccurrence, secures source bytes locally, calculates checksum and resolves/creates the canonical Source. Ingest must not require AI or semantic classification.
 
 For external channels such as Drive Inbox, successful discovery alone is not sufficient to remove the source. Home Agent first verifies that material is safely under its control.
 
@@ -72,6 +72,8 @@ External drop zones such as Drive Inbox are temporary. After Home Agent has safe
 Never delete the only verified copy. Cleanup is deterministic, retryable and separately tracked.
 
 ## 13. Persistent processing state
+The normative Source/IngestOccurrence/InboxItem distinction and state-machine invariants are defined in `docs/architecture/DATA_MODEL.md`.
+
 Normal user action is **Analysera Inbox**. Backend selects the next eligible work and AI may group likely related items automatically. Manual selection is secondary.
 
 Processing is resumable. A user can choose **Fortsätt senare** at a safe boundary. Already completed stages are not repeated unless inputs, processing version or explicit retry policy require it.
