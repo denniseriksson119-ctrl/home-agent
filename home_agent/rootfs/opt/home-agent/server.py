@@ -18,7 +18,7 @@ DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 1
+DB_SCHEMA_VERSION = 2
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -46,6 +46,10 @@ def migrate_db(db):
             db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), str(object_type), str(legacy_id)))
         db.execute("INSERT INTO schema_meta(singleton, version) VALUES(1,1) ON CONFLICT(singleton) DO UPDATE SET version=excluded.version")
         version = 1
+    if version < 2:
+        db.execute("CREATE TABLE IF NOT EXISTS object_relation (source_id TEXT NOT NULL, relation_type TEXT NOT NULL, target_id TEXT NOT NULL, legacy_source_ref TEXT, legacy_target_ref TEXT, PRIMARY KEY(source_id, relation_type, target_id))")
+        db.execute("UPDATE schema_meta SET version=2 WHERE singleton=1")
+        version = 2
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
