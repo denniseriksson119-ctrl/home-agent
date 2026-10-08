@@ -42,3 +42,19 @@ Inbox is a Home Agent queue/domain concept for unprocessed source material and c
 **Status:** Accepted
 
 Users can later analyze multiple Inbox items together. Joint analysis is allowed and encouraged when several sources may describe the same event, object or work, while every extracted fact retains source provenance.
+
+
+## DD-014 — Analyze Inbox is the default
+**Status:** Accepted
+
+The normal Inbox action is **Analysera Inbox**. Users should not need to preselect files or understand which sources belong together before analysis. Home Agent works through the queue and groups likely related material when useful. Manual selection remains a secondary option.
+
+## DD-015 — Inbox is a persistent stateful work queue
+**Status:** Accepted
+
+Backend state, not AI/chat memory, records Inbox progression. Analysis, proposal/review, structured registration and archival are distinct states. Processing can be paused and resumed later without redoing completed work.
+
+## DD-016 — Analysis can pause and resume
+**Status:** Accepted
+
+A long Inbox run can stop at a safe boundary via **Fortsätt senare**. The next run resumes from persisted local state and clearly distinguishes completed, waiting-for-review and remaining work.
