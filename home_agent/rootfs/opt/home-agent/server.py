@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import copy
+import hashlib
 import difflib
 import html
 import os
@@ -17,6 +18,7 @@ PORT = 8099
 DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
+SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
 DB_SCHEMA_VERSION = 3
 
@@ -191,7 +193,8 @@ def database_diagnostics():
         inbox_items = db.execute("SELECT COUNT(*) FROM inbox_item").fetchone()[0]
         orphan_occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence o LEFT JOIN source s ON s.source_id=o.source_id WHERE o.source_id IS NOT NULL AND s.source_id IS NULL").fetchone()[0]
         orphan_inbox = db.execute("SELECT COUNT(*) FROM inbox_item i LEFT JOIN source s ON s.source_id=i.source_id WHERE s.source_id IS NULL").fetchone()[0]
-    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox
+        duplicate_hashes = db.execute("SELECT COUNT(*) FROM (SELECT sha256 FROM source WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING COUNT(*) > 1)").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes
 
 def load_home():
     try:
@@ -267,6 +270,41 @@ def add_room_note(data, room_id, note):
     import_database(data, yaml.safe_dump(data, allow_unicode=True, sort_keys=False), (room_id, "note_added", None, note))
     return entry
 
+
+def capture_source(filename, media_type, raw):
+    if not raw:
+        raise ValueError("File is empty.")
+    digest = hashlib.sha256(raw).hexdigest()
+    SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            row = db.execute("SELECT source_id, storage_ref FROM source WHERE sha256=?", (digest,)).fetchone()
+            if row:
+                source_id, storage_ref = row
+            else:
+                source_id = uuid7()
+                storage_ref = str(SOURCE_DIR / source_id)
+                tmp = SOURCE_DIR / (source_id + ".tmp")
+                with tmp.open("wb") as out:
+                    out.write(raw)
+                    out.flush()
+                    os.fsync(out.fileno())
+                os.replace(tmp, storage_ref)
+                db.execute("INSERT INTO source(source_id, source_type, media_type, original_name, sha256, storage_ref, custody_status) VALUES(?,?,?,?,?,?,?)",
+                           (source_id, "file", media_type or None, filename or None, digest, storage_ref, "local_verified"))
+            occurrence_id = uuid7()
+            inbox_item_id = uuid7()
+            db.execute("INSERT INTO ingest_occurrence(occurrence_id, source_id, channel, external_ref, cleanup_status) VALUES(?,?,?,?,?)",
+                       (occurrence_id, source_id, "home_agent_upload", filename or None, "not_required"))
+            db.execute("INSERT INTO inbox_item(inbox_item_id, source_id, occurrence_id, stage, status) VALUES(?,?,?,?,?)",
+                       (inbox_item_id, source_id, occurrence_id, "captured", "pending"))
+            db.commit()
+            return source_id, occurrence_id, inbox_item_id, bool(row)
+        except Exception:
+            db.rollback()
+            raise
 
 def room_history(object_id, limit=10):
     init_db()
@@ -388,7 +426,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.0d1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.1a1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -417,7 +455,13 @@ def render(data, error=None, notice=None):
                 for space in spaces or []:
                     out.append(f"<li>{html.escape(str(space.get('name', space.get('id', 'Space'))))} <em>(space)</em></li>")
                 out.append("</ul>")
-    out.append("""<hr><h2>Import YAML snapshot</h2>
+    out.append("""<hr><h2>Add to Inbox</h2>
+<form method="post" action="/capture" enctype="multipart/form-data">
+<input type="file" name="source" required>
+<button type="submit">Save to Inbox</button>
+</form>
+<p>The original file is stored locally before an Inbox item is created.</p>
+<hr><h2>Import YAML snapshot</h2>
 <form method="post" action="/import" enctype="multipart/form-data">
 <input type="file" name="snapshot" accept=".yaml,.yml,text/yaml,application/x-yaml" required>
 <button type="submit">Import</button>
@@ -445,8 +489,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if parsed.path == "/diagnostics":
-            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox = database_diagnostics()
-            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox)).encode("utf-8")
+            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes = database_diagnostics()
+            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\nduplicate_source_hashes=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes)).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -481,6 +525,25 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 data, _ = load_home()
                 self.send_page(render(data, error=str(exc)), 400)
+                return
+        if path == "/capture":
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if length <= 0 or length > MAX_UPLOAD:
+                    raise ValueError("Upload is empty or larger than 5 MB.")
+                form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")})
+                item = form["source"]
+                raw = item.file.read(MAX_UPLOAD + 1)
+                if len(raw) > MAX_UPLOAD:
+                    raise ValueError("File is larger than 5 MB.")
+                source_id, occurrence_id, inbox_item_id, duplicate = capture_source(item.filename, item.type, raw)
+                data, error = load_home()
+                notice = "Saved to Inbox locally." + (" Exact source already existed; new ingest occurrence recorded." if duplicate else "")
+                self.send_page(render(data, error, notice))
+                return
+            except Exception as exc:
+                data, existing_error = load_home()
+                self.send_page(render(data, error=str(exc) if not existing_error else existing_error), 400)
                 return
         if path != "/import":
             self.send_error(404)
