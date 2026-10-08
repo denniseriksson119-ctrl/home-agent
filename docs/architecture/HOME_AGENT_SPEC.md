@@ -78,7 +78,7 @@ Användaren ska inte godkänna YAML-generering, checksummor, filtransport, backu
 ## 9. Central intake
 Ny ostrukturerad information ska kunna komma in centralt via text, foto/kamera och dokument.
 
-**Input → lokal registrering av källmaterial → AI-analys → matchning mot Home Graph → semantiskt förslag → godkännande när det krävs → lokal commit → automatisk arkivering/backup**
+Det normativa flödet finns i `docs/workflow/PROCESSING_AI_WORKFLOW.md`: intake säkrar först källmaterial och identitet deterministiskt; därefter sker dedupe, parsing, semantisk analys, proposal/review, commit, arkivering och cleanup som separata återupptagbara steg.
 
 Enkla kontextbundna åtgärder får gå direkt till rätt objekt utan AI när tolkning inte behövs.
 
@@ -108,7 +108,7 @@ Batchanalys ska kunna analysera flera Inbox-objekt tillsammans när det förbät
 Normativ ingestion, deduplicering, parsing/extraktion, AI-analys, proposal, commit, arkivering, extern Inbox-cleanup, pause/resume och retry definieras i `docs/workflow/PROCESSING_AI_WORKFLOW.md`. Identitet, provenance och source-/dedupe-semantik definieras i `docs/architecture/DATA_MODEL.md`.
 
 ## 10. Dokument och bilder
-Original bevaras. Metadata och relationer kan koppla dokument/bilder till Asset, System, Component, Project, Room, Space och Event. Drive-arkivering är en backend-funktion; användaren ska inte behöva känna till Drive-mappar.
+Original bevaras. Metadata och relationer kan koppla dokument/bilder till Asset, System, Component, Project, Room, Space och Event. Fysisk arkivstruktur är mänskligt bläddringsbar men semantiskt neutral: mappar/filnamn får inte vara nödvändiga för dessa relationer eller identitet. Normativ arkivstruktur finns i `BACKUP_RESTORE_ARCHIVE.md`.
 
 ## 11. Historik
 Historik är händelsebaserad. Tidigare information ska inte försvinna när ny information registreras. Edit/delete ska ha definierad audit-semantik utan att audit behöver dominera normal UI.
@@ -154,8 +154,11 @@ Lokal commit är oberoende av Drive. Backup/export/arkiv är separata artefaktkl
 ## 19. Specifikationer och Git-flöde
 Aktuella utvecklingsspecifikationer finns i Git-repot:
 - System Specification
-- Data Model / Schema Specification
-- AI & Workflow Specification
+- Data Model / Identity / Provenance
+- Security / Runtime / Deployment
+- Backup / Restore / Archive
+- Processing Workflow
+- AI / Proposal Contract
 - UI Specification
 - Design Decisions
 
