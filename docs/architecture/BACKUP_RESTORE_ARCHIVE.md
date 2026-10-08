@@ -67,7 +67,7 @@ If Drive Inbox contains bytes already represented by a canonical Source, exact d
 Drive/provider IDs, paths and filenames are external storage references, not Home Agent identity. Provenance survives cleanup of temporary ingest occurrences.
 
 ## Security
-Backups and archives contain private household data and never belong in the public Git repository. Credentials/tokens are not embedded in portable backup manifests/exports. Credential storage, Drive authorization scope and encryption policy must be defined before production use.
+Backups and archives contain private household data and never belong in the public Git repository. Credentials/tokens are not embedded in portable backup manifests/exports. Credential storage and Drive authorization scope follow `SECURITY_RUNTIME.md`. Encryption-at-rest/backup encryption policy remains to be selected before production use.
 
 ## Disaster recovery target
 A replacement Home Agent installation can recover operational state from a verified backup and reconnect archived sources using stored IDs/checksums/references. Recovery must not depend on chat memory, legacy textual room IDs or a particular Raspberry Pi filesystem path.
