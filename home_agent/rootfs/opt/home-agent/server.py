@@ -18,7 +18,7 @@ DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 2
+DB_SCHEMA_VERSION = 3
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -50,6 +50,16 @@ def migrate_db(db):
         db.execute("CREATE TABLE IF NOT EXISTS object_relation (source_id TEXT NOT NULL, relation_type TEXT NOT NULL, target_id TEXT NOT NULL, legacy_source_ref TEXT, legacy_target_ref TEXT, PRIMARY KEY(source_id, relation_type, target_id))")
         db.execute("UPDATE schema_meta SET version=2 WHERE singleton=1")
         version = 2
+    if version < 3:
+        db.execute("CREATE TABLE IF NOT EXISTS source (source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, media_type TEXT, original_name TEXT, sha256 TEXT, captured_at TEXT, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, storage_ref TEXT, custody_status TEXT NOT NULL DEFAULT 'pending')")
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_source_sha256 ON source(sha256) WHERE sha256 IS NOT NULL")
+        db.execute("CREATE TABLE IF NOT EXISTS ingest_occurrence (occurrence_id TEXT PRIMARY KEY, source_id TEXT, channel TEXT NOT NULL, external_provider TEXT, external_ref TEXT, observed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, cleanup_status TEXT NOT NULL DEFAULT 'not_required', FOREIGN KEY(source_id) REFERENCES source(source_id))")
+        db.execute("CREATE TABLE IF NOT EXISTS inbox_item (inbox_item_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, occurrence_id TEXT, stage TEXT NOT NULL DEFAULT 'captured', status TEXT NOT NULL DEFAULT 'pending', failed_stage TEXT, last_error TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT, FOREIGN KEY(source_id) REFERENCES source(source_id), FOREIGN KEY(occurrence_id) REFERENCES ingest_occurrence(occurrence_id))")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_ingest_source ON ingest_occurrence(source_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_inbox_source ON inbox_item(source_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_inbox_state ON inbox_item(status, stage)")
+        db.execute("UPDATE schema_meta SET version=3 WHERE singleton=1")
+        version = 3
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
@@ -174,7 +184,12 @@ def database_diagnostics():
         unmapped = db.execute("SELECT COUNT(*) FROM objects o LEFT JOIN object_identity i ON i.object_type=o.object_type AND i.legacy_id=o.object_id WHERE i.permanent_id IS NULL").fetchone()[0]
         relations = db.execute("SELECT COUNT(*) FROM object_relation").fetchone()[0]
         broken = db.execute("SELECT COUNT(*) FROM object_relation r LEFT JOIN object_identity s ON s.permanent_id=r.source_id LEFT JOIN object_identity t ON t.permanent_id=r.target_id WHERE s.permanent_id IS NULL OR t.permanent_id IS NULL").fetchone()[0]
-    return version[0] if version else 0, objects, identities, unmapped, relations, broken
+        sources = db.execute("SELECT COUNT(*) FROM source").fetchone()[0]
+        occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence").fetchone()[0]
+        inbox_items = db.execute("SELECT COUNT(*) FROM inbox_item").fetchone()[0]
+        orphan_occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence o LEFT JOIN source s ON s.source_id=o.source_id WHERE o.source_id IS NOT NULL AND s.source_id IS NULL").fetchone()[0]
+        orphan_inbox = db.execute("SELECT COUNT(*) FROM inbox_item i LEFT JOIN source s ON s.source_id=i.source_id WHERE s.source_id IS NULL").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox
 
 def load_home():
     try:
@@ -330,7 +345,7 @@ def room_page(data, room_id):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            f"<title>{name} - Home Agent</title></head><body>",
-           "<p><a href='/'>← Espås Hills</a></p>",
+           "<p><a href='/'>← Home</a></p>",
            f"<h1>{name}</h1><p>{floor_name}</p>"]
 
     features = room.get("features", []) or []
@@ -375,7 +390,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.0b1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.0c1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -432,8 +447,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if parsed.path == "/diagnostics":
-            schema, objects, identities, unmapped, relations, broken = database_diagnostics()
-            body = ("schema_version=%s\\nobjects=%s\\nidentities=%s\\nunmapped_objects=%s\\nrelations=%s\\nbroken_relations=%s\\n" % (schema, objects, identities, unmapped, relations, broken)).encode("utf-8")
+            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox = database_diagnostics()
+            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox)).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
