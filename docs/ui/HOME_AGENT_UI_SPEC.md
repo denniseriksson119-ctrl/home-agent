@@ -21,6 +21,8 @@ This document defines how users interact with Home Agent. It complements the sys
 10. **History is preserved without dominating the UI.** User-facing activity is human-readable; detailed audit information is available separately.
 11. **Follow-up and maintenance are distinct.** A follow-up is something to investigate or act on; maintenance is planned/recurring service or care. Both may surface centrally in **Att göra**.
 12. **Human-friendly presentation.** Technical timestamps remain in storage; normal UI uses localized, readable dates and times.
+13. **Capture and processing are separate.** Users must be able to collect text, photos and documents quickly without being forced to analyze or classify them immediately. Captured material can wait in Home Agent Inbox for later processing.
+14. **Inbox is a Home Agent concept, not a Drive folder.** Drive Inbox may be an import channel, but Home Agent owns the processing state and queue semantics.
 
 ## Navigation direction
 
@@ -72,11 +74,25 @@ The global intake accepts at least:
 - photo/camera input
 - document upload
 
-Target flow:
+The intake supports two first-class paths.
 
-**Input → AI analysis → match existing objects → proposal → user review when required → local commit → deterministic archival/snapshot processes**
+### Analyze now
 
-The user reviews semantic meaning, not implementation details such as YAML, filenames or database fields.
+**Input → local source capture → AI analysis → match existing objects → semantic proposal → user review when required → local database commit → automatic archive/backup as applicable**
+
+### Save for later
+
+**Input → local source capture → Home Agent Inbox → later batch/selective analysis → match existing objects → semantic proposal → user review when required → local database commit → automatic archive/backup as applicable**
+
+The first screen should therefore support a primary **Analysera nu** action and a secondary **Spara i Inbox** action.
+
+Saving to Inbox is capture, not registration of extracted facts. It must be fast and must not require the user to classify the material first.
+
+Inbox can contain multiple related items and later analysis may consider selected items together. This supports workflows such as collecting photos, an invoice and a manual during work in the home and processing them later.
+
+A Drive Inbox may remain as an optional import channel. Files discovered there should be imported/registered into Home Agent Inbox; the Drive folder itself is not the operational queue or source of truth.
+
+The user reviews semantic meaning, not implementation details such as YAML, filenames, database fields, checksums or Drive transport.
 
 Simple manual context-specific input can bypass AI when interpretation is unnecessary.
 
