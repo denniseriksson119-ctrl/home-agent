@@ -12,3 +12,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m py_compile home_agent/rootfs/opt/home-agent/*.py
+      - run: python -m unittest discover -s tests -v
