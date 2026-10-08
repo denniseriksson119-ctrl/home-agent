@@ -18,7 +18,7 @@ DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 2
+DB_SCHEMA_VERSION = 3
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -50,6 +50,16 @@ def migrate_db(db):
         db.execute("CREATE TABLE IF NOT EXISTS object_relation (source_id TEXT NOT NULL, relation_type TEXT NOT NULL, target_id TEXT NOT NULL, legacy_source_ref TEXT, legacy_target_ref TEXT, PRIMARY KEY(source_id, relation_type, target_id))")
         db.execute("UPDATE schema_meta SET version=2 WHERE singleton=1")
         version = 2
+    if version < 3:
+        db.execute("CREATE TABLE IF NOT EXISTS source (source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, media_type TEXT, original_name TEXT, sha256 TEXT, captured_at TEXT, imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, storage_ref TEXT, custody_status TEXT NOT NULL DEFAULT 'pending')")
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_source_sha256 ON source(sha256) WHERE sha256 IS NOT NULL")
+        db.execute("CREATE TABLE IF NOT EXISTS ingest_occurrence (occurrence_id TEXT PRIMARY KEY, source_id TEXT, channel TEXT NOT NULL, external_provider TEXT, external_ref TEXT, observed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, cleanup_status TEXT NOT NULL DEFAULT 'not_required', FOREIGN KEY(source_id) REFERENCES source(source_id))")
+        db.execute("CREATE TABLE IF NOT EXISTS inbox_item (inbox_item_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, occurrence_id TEXT, stage TEXT NOT NULL DEFAULT 'captured', status TEXT NOT NULL DEFAULT 'pending', failed_stage TEXT, last_error TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, completed_at TEXT, FOREIGN KEY(source_id) REFERENCES source(source_id), FOREIGN KEY(occurrence_id) REFERENCES ingest_occurrence(occurrence_id))")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_ingest_source ON ingest_occurrence(source_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_inbox_source ON inbox_item(source_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_inbox_state ON inbox_item(status, stage)")
+        db.execute("UPDATE schema_meta SET version=3 WHERE singleton=1")
+        version = 3
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
