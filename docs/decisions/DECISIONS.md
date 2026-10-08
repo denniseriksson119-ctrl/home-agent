@@ -126,3 +126,29 @@ Uploaded artifacts alone do not prove recoverability. Backup design includes che
 **Status:** Accepted
 
 Source/domain identity remains permanent when archived files move or are renamed. Drive paths and provider IDs are external references only.
+
+
+## DD-030 — Public repo contains no private household data
+**Status:** Accepted
+
+The public repository contains reusable code/specs and synthetic fixtures only. Real household data, source material, production snapshots and credentials stay in private runtime/archive storage.
+
+## DD-031 — Secrets are runtime configuration
+**Status:** Accepted
+
+Provider credentials are not domain data, model context or portable exports. Backend owns credentials and external integrations use least privilege.
+
+## DD-032 — Home Assistant hosts but does not own Home Agent data
+**Status:** Accepted
+
+The current deployment is a Home Assistant OS add-on using platform persistent storage. Home Agent remains a separate service/domain and integrates with Home Assistant through supported APIs rather than a shared database.
+
+## DD-033 — Runtime state is portable across hosts
+**Status:** Accepted
+
+Domain identity and recovery semantics do not depend on Raspberry Pi disk paths, container paths, SQLite row IDs or Home Assistant internals. Permanent IDs and verified restore enable later host migration.
+
+## DD-034 — External integration failure is isolated
+**Status:** Accepted
+
+AI, Drive or Home Assistant outages must not corrupt local operational state or unnecessarily disable unrelated local operations. Integration work is validated, retryable and idempotent where applicable.

@@ -136,6 +136,9 @@ Systemet stödjer flera hem och ska på sikt stödja flera personer/behörighete
 
 Behörighet verkställs i backend/databas, inte bara genom UI.
 
+## 16.1 Säkerhet och runtime
+Normativa trust boundaries, secrets, authorization, Home Assistant add-on-runtime, health, migrations och portability definieras i `docs/architecture/SECURITY_RUNTIME.md`.
+
 ## 17. Persistens, schema och migration
 Nuvarande implementation använder lokal SQLite. Domänmodellen ska inte göras beroende av SQLite; senare migrering till PostgreSQL eller annan lämplig databas ska vara möjlig.
 
