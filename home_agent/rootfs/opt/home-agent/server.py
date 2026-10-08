@@ -18,10 +18,36 @@ DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
+DB_SCHEMA_VERSION = 1
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+def uuid7():
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    value = (now_ms & ((1 << 48) - 1)) << 80
+    value |= 0x7 << 76
+    value |= (uuid.uuid4().int & ((1 << 76) - 1))
+    value &= ~(0b11 << 62)
+    value |= 0b10 << 62
+    return str(uuid.UUID(int=value))
+
+def migrate_db(db):
+    db.execute("CREATE TABLE IF NOT EXISTS schema_meta (singleton INTEGER PRIMARY KEY CHECK (singleton = 1), version INTEGER NOT NULL)")
+    row = db.execute("SELECT version FROM schema_meta WHERE singleton=1").fetchone()
+    version = int(row[0]) if row else 0
+    if version > DB_SCHEMA_VERSION:
+        raise RuntimeError("Database schema is newer than this Home Agent version.")
+    if version < 1:
+        db.execute("CREATE TABLE IF NOT EXISTS object_identity (permanent_id TEXT PRIMARY KEY, object_type TEXT NOT NULL, legacy_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(object_type, legacy_id))")
+        existing = db.execute("SELECT object_id, object_type FROM objects").fetchall()
+        for legacy_id, object_type in existing:
+            db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), str(object_type), str(legacy_id)))
+        db.execute("INSERT INTO schema_meta(singleton, version) VALUES(1,1) ON CONFLICT(singleton) DO UPDATE SET version=excluded.version")
+        version = 1
+    if version != DB_SCHEMA_VERSION:
+        raise RuntimeError("Database schema migration did not reach expected version.")
 
 def init_db():
     DB_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -47,6 +73,13 @@ def init_db():
             old_value TEXT,
             new_value TEXT NOT NULL
         )""")
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            migrate_db(db)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
 def object_rows(data):
     home = find_home(data)
@@ -79,6 +112,8 @@ def import_database(data, text):
         db.execute("BEGIN")
         db.execute("DELETE FROM objects")
         db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
+        for legacy_id, object_type, _name, _parent, _yaml in rows:
+            db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), object_type, legacy_id))
         db.execute("""INSERT INTO snapshot(id, schema_version, yaml_text, imported_at)
                       VALUES(1, ?, ?, CURRENT_TIMESTAMP)
                       ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
