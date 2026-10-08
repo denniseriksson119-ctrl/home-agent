@@ -193,7 +193,8 @@ def database_diagnostics():
         inbox_items = db.execute("SELECT COUNT(*) FROM inbox_item").fetchone()[0]
         orphan_occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence o LEFT JOIN source s ON s.source_id=o.source_id WHERE o.source_id IS NOT NULL AND s.source_id IS NULL").fetchone()[0]
         orphan_inbox = db.execute("SELECT COUNT(*) FROM inbox_item i LEFT JOIN source s ON s.source_id=i.source_id WHERE s.source_id IS NULL").fetchone()[0]
-    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox
+        duplicate_hashes = db.execute("SELECT COUNT(*) FROM (SELECT sha256 FROM source WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING COUNT(*) > 1)").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes
 
 def load_home():
     try:
@@ -488,8 +489,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if parsed.path == "/diagnostics":
-            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox = database_diagnostics()
-            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox)).encode("utf-8")
+            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes = database_diagnostics()
+            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\nduplicate_source_hashes=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox, duplicate_hashes)).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
