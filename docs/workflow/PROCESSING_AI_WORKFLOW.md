@@ -40,6 +40,8 @@ AI reasons over relevant grouped sources, extracted information and selected Hom
 AI must not invent unsupported topology or facts.
 
 ## 8. Proposal
+The normative AI input/output and proposal contract is defined in `docs/ai/AI_CONTRACT.md`.
+
 Analysis produces structured semantic proposals with:
 - intended operation,
 - target permanent IDs when known,
