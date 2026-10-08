@@ -58,3 +58,24 @@ Backend state, not AI/chat memory, records Inbox progression. Analysis, proposal
 **Status:** Accepted
 
 A long Inbox run can stop at a safe boundary via **Fortsätt senare**. The next run resumes from persisted local state and clearly distinguishes completed, waiting-for-review and remaining work.
+
+
+## DD-017 — Opaque permanent internal IDs
+**Status:** Accepted
+
+Every persistent entity uses an opaque immutable machine-generated internal ID, targeting UUIDv7. Names, slugs, addresses, filenames, model numbers and legacy/external IDs are mutable attributes or mappings and never internal identity. Imported textual IDs are migration aliases only.
+
+## DD-018 — Layered deduplication
+**Status:** Accepted
+
+Home Agent distinguishes exact byte-level source deduplication, probable semantic/perceptual source duplication and domain entity matching. Exact duplicates are handled deterministically before expensive processing. Distinct evidence is preserved even when several Sources describe the same real-world entity.
+
+## DD-019 — Resumable staged processing pipeline
+**Status:** Accepted
+
+Inbox processing is staged: ingest, dedupe, parse/extract, semantic matching/grouping/analysis, proposal, review, commit, archive and cleanup. Durable state is persisted so processing can pause/retry/resume without AI/chat memory or repeating completed work.
+
+## DD-020 — Drive Inbox cleanup only after verified custody
+**Status:** Accepted
+
+Drive Inbox is a temporary ingest channel. An item is removed only after Home Agent has verified safe custody and, where applicable, successful permanent archival. Cleanup failure remains retryable and does not invalidate successful local processing.
