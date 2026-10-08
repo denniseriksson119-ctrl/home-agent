@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, quote
 import cgi
+import ui
 import copy
 import hashlib
 import difflib
@@ -463,7 +464,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.1c</p><p><a href='/inbox'>Inbox</a></p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.2</p><p><a href='/inbox'>Inbox</a></p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -521,6 +522,24 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path in ("/", "/inbox", "/rooms", "/add", "/todo", "/search", "/more"):
+            if parsed.path == "/inbox":
+                self.send_page(ui.inbox_page(inbox_rows()))
+            elif parsed.path == "/add":
+                self.send_page(ui.add_page())
+            elif parsed.path == "/todo":
+                self.send_page(ui.todo_page(len(inbox_rows())))
+            elif parsed.path == "/search":
+                self.send_page(ui.search_page())
+            elif parsed.path == "/more":
+                self.send_page(ui.more_page())
+            else:
+                data, error = load_home()
+                if parsed.path == "/rooms":
+                    self.send_page(ui.rooms_page(data))
+                else:
+                    self.send_page(ui.home_page(data, len(inbox_rows()), error=error))
+            return
         if parsed.path == "/ui.css":
             css = Path("/opt/home-agent/ui.css").read_bytes()
             self.send_response(200)
@@ -576,7 +595,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             except Exception as exc:
                 data, _ = load_home()
-                self.send_page(render(data, error=str(exc)), 400)
+                self.send_page(ui.home_page(data, len(inbox_rows()), error=str(exc)), 400)
                 return
         if path == "/capture":
             try:
@@ -591,11 +610,11 @@ class Handler(BaseHTTPRequestHandler):
                 source_id, occurrence_id, inbox_item_id, duplicate = capture_source(item.filename, item.type, raw)
                 data, error = load_home()
                 notice = "Saved to Inbox locally." + (" Exact source already existed; new ingest occurrence recorded." if duplicate else "")
-                self.send_page(render(data, error, notice))
+                self.send_page(ui.home_page(data, len(inbox_rows()), notice=notice, error=error))
                 return
             except Exception as exc:
                 data, existing_error = load_home()
-                self.send_page(render(data, error=str(exc) if not existing_error else existing_error), 400)
+                self.send_page(ui.home_page(data, len(inbox_rows()), error=str(exc) if not existing_error else existing_error), 400)
                 return
         if path != "/import":
             self.send_error(404)
@@ -623,7 +642,7 @@ class Handler(BaseHTTPRequestHandler):
                 if os.path.exists(tmp_name):
                     os.unlink(tmp_name)
             import_database(data, text)
-            self.send_page(render(data, notice="Snapshot imported successfully into local SQLite."))
+            self.send_page(ui.home_page(data, len(inbox_rows()), notice="Snapshot imported successfully into local SQLite."))
         except Exception as exc:
             data, existing_error = load_home()
             self.send_page(render(data, error=str(exc) if not existing_error else existing_error), 400)
