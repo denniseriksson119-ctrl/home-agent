@@ -109,6 +109,33 @@ def object_rows(data):
             add(item, key.rstrip("s"), str(home.get("id", "")))
     return rows
 
+def identity_map(db):
+    return {str(legacy): str(permanent) for permanent, legacy in db.execute("SELECT permanent_id, legacy_id FROM object_identity").fetchall()}
+
+def relation_rows(data, identities):
+    home = find_home(data)
+    if not home:
+        return []
+    result = set()
+    def add(source, relation, target):
+        source_id = identities.get(str(source))
+        target_id = identities.get(str(target))
+        if source_id and target_id:
+            result.add((source_id, relation, target_id, str(source), str(target)))
+    home_id = str(home.get("id", ""))
+    for floor in home.get("floors", []) or []:
+        floor_id = str(floor.get("id", ""))
+        add(floor_id, "parent", home_id)
+        for room in floor.get("rooms", []) or []:
+            room_id = str(room.get("id", ""))
+            add(room_id, "parent", floor_id)
+            for field, relation in (("system_refs", "system"), ("component_refs", "component"), ("asset_refs", "asset")):
+                for target in room.get(field, []) or []:
+                    add(room_id, relation, target)
+        for space in floor.get("spaces", []) or []:
+            add(str(space.get("id", "")), "parent", floor_id)
+    return sorted(result)
+
 def import_database(data, text):
     init_db()
     rows = object_rows(data)
@@ -118,6 +145,8 @@ def import_database(data, text):
         db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
         for legacy_id, object_type, _name, _parent, _yaml in rows:
             db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), object_type, legacy_id))
+        db.execute("DELETE FROM object_relation")
+        db.executemany("INSERT INTO object_relation(source_id, relation_type, target_id, legacy_source_ref, legacy_target_ref) VALUES(?,?,?,?,?)", relation_rows(data, identity_map(db)))
         db.execute("""INSERT INTO snapshot(id, schema_version, yaml_text, imported_at)
                       VALUES(1, ?, ?, CURRENT_TIMESTAMP)
                       ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
