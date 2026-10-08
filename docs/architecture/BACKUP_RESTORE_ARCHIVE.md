@@ -47,14 +47,47 @@ Uploaded files alone do not prove recoverability. Home Agent must support non-de
 Periodic automated restore verification is a target capability; exact cadence is deployment policy.
 
 ## Permanent source archive
-Archiving a Source is separate from database backup. Archive paths and filenames are storage organization, never identity. Moving or renaming an archived file does not change Source identity.
+Archiving a Source is separate from database backup.
+
+**Physical storage is for human findability and preservation. Semantic organization belongs to Home Graph.** Archive paths, folders and filenames never encode required domain relationships or identity.
+
+The archive is deliberately human-browsable using coarse, stable categories rather than Room/Asset/System trees. Recommended Drive shape:
+
+```text
+Home Agent/
+  Inbox/
+  Archive/
+    Photos/
+      YYYY/
+        MM/
+    Documents/
+      Manuals/
+      Invoices/
+      Receipts/
+      Warranties/
+      Other/
+    Other/
+  Backups/
+  Exports/
+```
+
+Document categories may add year subfolders when volume justifies it. The system must not require pre-creating empty folders.
+
+Files should receive a human-readable archive filename based on date + short description + short Source-ID hint, for example:
+`2026-10-08_heat-pump-rating-plate__src-a81f3c.jpg`
+
+The short suffix is a convenience hint, not identity. The complete permanent Source ID remains in the database. Original filename is retained as metadata.
+
+Renaming/moving an archive file does not change Source identity. File contents/original bytes are not modified by archival naming.
+
+A Source may relate simultaneously to Room, Asset, System, Project and Event without copies being placed in corresponding semantic folders. Those relationships exist in Home Graph.
 
 Archive operations record external storage references and verification state locally.
 
 ## Drive Inbox handoff and cleanup
 Drive Inbox is a temporary ingest/drop zone.
 
-**Discover → import/copy → verify Home Agent custody/checksum → process → archive when applicable → verify archive → clean Drive Inbox occurrence**
+**Discover → create IngestOccurrence → import/copy → resolve canonical Source by checksum → verify Home Agent custody → process → archive when applicable → verify archive → clean IngestOccurrence/external Inbox item**
 
 Never delete the only verified copy. If permanent Drive archive is required, cleanup happens only after archive verification.
 
