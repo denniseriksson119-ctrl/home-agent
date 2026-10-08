@@ -510,7 +510,7 @@ def render(data, error=None, notice=None):
 
 class Handler(BaseHTTPRequestHandler):
     def send_page(self, body, status=200):
-        if b"<html" in body.lower():
+        if b"<html" in body.lower() and b"class='app'" not in body:
             body = body.replace(b"</head>", b"<link rel='stylesheet' href='/ui.css'></head>", 1)
             nav = b"<nav class='ha-nav' aria-label='Navigation'><a href='/'>Hem</a><a href='/inbox'>Inbox</a></nav>"
             body = body.replace(b"</body>", nav + b"</body>", 1)
