@@ -79,3 +79,24 @@ Inbox processing is staged: ingest, dedupe, parse/extract, semantic matching/gro
 **Status:** Accepted
 
 Drive Inbox is a temporary ingest channel. An item is removed only after Home Agent has verified safe custody and, where applicable, successful permanent archival. Cleanup failure remains retryable and does not invalidate successful local processing.
+
+
+## DD-021 — AI returns proposals, never direct writes
+**Status:** Accepted
+
+AI output is untrusted structured semantic input. The backend validates IDs, schema, operations, authorization and current state, assigns permanent IDs for new entities, and owns all database writes and side effects.
+
+## DD-022 — AI context is bounded and source-aware
+**Status:** Accepted
+
+Backend supplies only relevant source material/extractions, existing entities with permanent IDs and task context. AI distinguishes source observations, committed facts, explicit user input and inference. Missing facts remain unknown.
+
+## DD-023 — Proposal facts retain evidence
+**Status:** Accepted
+
+Confidence belongs to individual claims/matches. Proposed operations retain supporting Source IDs/evidence. Grouped analysis never removes per-source provenance.
+
+## DD-024 — Proposal application is idempotent and stale-safe
+**Status:** Accepted
+
+Proposal/run identity is stable. Replaying an accepted proposal cannot duplicate effects. Backend revalidates current state before commit and does not blindly apply proposals based on stale context.
