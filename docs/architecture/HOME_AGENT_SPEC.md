@@ -82,6 +82,22 @@ Ny ostrukturerad information ska kunna komma in centralt via text, foto/kamera o
 
 Enkla kontextbundna åtgärder får gå direkt till rätt objekt utan AI när tolkning inte behövs.
 
+## 9.1 Capture now, process later
+
+Capture och processing är separata steg. Användaren ska kunna samla text, bilder och dokument snabbt utan krav på omedelbar AI-analys eller klassificering.
+
+Home Agent har därför en egen **Inbox** som domän-/kökoncept för obehandlat källmaterial. Material i Inbox är inte i sig strukturerade fakta i Home Graph.
+
+Två likvärdiga ingångar stöds:
+
+**Direkt:** Input → analys → semantiskt förslag → eventuell review → lokal commit.
+
+**Senare:** Input → lokal Inbox → senare batchanalys → semantiskt förslag → eventuell review → lokal commit.
+
+Google Drive Inbox får användas som en extern ingest-kanal. Home Agent kan importera/synkronisera material därifrån till sin egen Inbox, men Drive-mappen är inte Home Agents operativa kö eller source of truth.
+
+Batchanalys ska kunna analysera flera Inbox-objekt tillsammans när det förbättrar kontexten, exempelvis bilder, faktura och dokument från samma arbete.
+
 ## 10. Dokument och bilder
 Original bevaras. Metadata och relationer kan koppla dokument/bilder till Asset, System, Component, Project, Room, Space och Event. Drive-arkivering är en backend-funktion; användaren ska inte behöva känna till Drive-mappar.
 
