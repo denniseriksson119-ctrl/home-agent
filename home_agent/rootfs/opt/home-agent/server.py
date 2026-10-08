@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import ui
+import inbox_queue
 import copy
 import hashlib
 import difflib
@@ -21,7 +22,7 @@ DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 3
+DB_SCHEMA_VERSION = 4
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -63,6 +64,10 @@ def migrate_db(db):
         db.execute("CREATE INDEX IF NOT EXISTS idx_inbox_state ON inbox_item(status, stage)")
         db.execute("UPDATE schema_meta SET version=3 WHERE singleton=1")
         version = 3
+    if version < 4:
+        inbox_queue.migrate(db)
+        db.execute("UPDATE schema_meta SET version=4 WHERE singleton=1")
+        version = 4
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
@@ -479,7 +484,7 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path in ("/", "/inbox", "/rooms", "/add", "/todo", "/search", "/more"):
             if parsed.path == "/inbox":
-                self.send_page(ui.inbox_page(inbox_rows()))
+                self.send_page(ui.inbox_page(inbox_rows(), inbox_queue.state(DB_FILE)))
             elif parsed.path == "/add":
                 self.send_page(ui.add_page())
             elif parsed.path == "/todo":
@@ -532,6 +537,13 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path in ("/inbox/analyze", "/inbox/pause", "/inbox/resume"):
+            action = {"/inbox/analyze": "start", "/inbox/pause": "pause", "/inbox/resume": "resume"}[path]
+            inbox_queue.command(DB_FILE, action)
+            self.send_response(303)
+            self.send_header("Location", "/inbox")
+            self.end_headers()
+            return
         if path == "/add-note":
             try:
                 data, error = load_home()
@@ -606,4 +618,6 @@ class Handler(BaseHTTPRequestHandler):
         print(format % args)
 
 if __name__ == "__main__":
+    bootstrap_database()
+    inbox_queue.launch(DB_FILE, SOURCE_DIR)
     HTTPServer((HOST, PORT), Handler).serve_forever()
