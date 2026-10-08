@@ -5,10 +5,11 @@ This directory contains the normative design and engineering documentation for H
 ## Active document hierarchy
 1. **System architecture** — `architecture/HOME_AGENT_SPEC.md`
 2. **Data model / identity / provenance** — `architecture/DATA_MODEL.md`
-3. **Processing & AI workflow** — `workflow/PROCESSING_AI_WORKFLOW.md`
-4. **UI specification** — `ui/HOME_AGENT_UI_SPEC.md`
-5. **Design decisions** — `decisions/DECISIONS.md`
-6. **Implementation** — code conforms to the applicable contracts above.
+3. **Processing workflow** — `workflow/PROCESSING_AI_WORKFLOW.md`
+4. **AI / proposal contract** — `ai/AI_CONTRACT.md`
+5. **UI specification** — `ui/HOME_AGENT_UI_SPEC.md`
+6. **Design decisions** — `decisions/DECISIONS.md`
+7. **Implementation** — code conforms to the applicable contracts above.
 
 ## Legacy workflow material
 Older imported Drive-era workflow documents are historical/superseded unless an active specification explicitly references a still-valid rule. They do not override the local-first architecture, data model or processing workflow.
