@@ -306,6 +306,43 @@ def capture_source(filename, media_type, raw):
             db.rollback()
             raise
 
+def inbox_rows(limit=100):
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        return db.execute("""SELECT i.inbox_item_id, i.created_at, i.stage, i.status,
+                                    s.original_name, s.media_type, s.source_id,
+                                    o.channel, o.occurrence_id
+                             FROM inbox_item i
+                             JOIN source s ON s.source_id=i.source_id
+                             LEFT JOIN ingest_occurrence o ON o.occurrence_id=i.occurrence_id
+                             ORDER BY i.created_at DESC, i.inbox_item_id DESC
+                             LIMIT ?""", (limit,)).fetchall()
+
+def inbox_page():
+    rows = inbox_rows()
+    out = ["<!doctype html><html><head><meta charset='utf-8'>",
+           "<meta name='viewport' content='width=device-width,initial-scale=1'>",
+           "<title>Inbox - Home Agent</title></head><body>",
+           "<p><a href='/'>← Home</a></p><h1>Inbox</h1>",
+           "<p>Persistent captured sources; no AI analysis has run.</p>"]
+    if not rows:
+        out.append("<p>Inbox is empty.</p>")
+    else:
+        out.append("<ul>")
+        for inbox_id, created_at, stage, status, original_name, media_type, source_id, channel, occurrence_id in rows:
+            out.append("<li><strong>" + html.escape(str(original_name or "Unnamed source")) + "</strong><br>")
+            out.append(html.escape(str(created_at)) + " · " + html.escape(str(status)) + " / " + html.escape(str(stage)))
+            if media_type:
+                out.append(" · " + html.escape(str(media_type)))
+            if channel:
+                out.append(" · " + html.escape(str(channel)))
+            out.append("<details><summary>Technical IDs</summary><small>InboxItem " + html.escape(str(inbox_id)) +
+                       "<br>Source " + html.escape(str(source_id)) +
+                       "<br>IngestOccurrence " + html.escape(str(occurrence_id or "")) + "</small></details></li>")
+        out.append("</ul>")
+    out.append("</body></html>")
+    return "".join(out).encode("utf-8")
+
 def room_history(object_id, limit=10):
     init_db()
     with sqlite3.connect(DB_FILE) as db:
@@ -426,7 +463,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.1a1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.1b1</p><p><a href="/inbox">Inbox</a></p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -496,6 +533,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        if parsed.path == "/inbox":
+            self.send_page(inbox_page())
             return
         data, error = load_home()
         if parsed.path == "/room" and data and not error:
