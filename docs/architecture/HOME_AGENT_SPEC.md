@@ -144,7 +144,9 @@ Schemaförändringar versionshanteras och migreras deterministiskt.
 YAML är inte operativ databas. YAML kan användas för bootstrap, import/export, diagnostik eller snapshots. Den importerade bootstrap-snapshotten är historiskt källunderlag för den lokala databasen, inte ett krav på framtida runtime-lagring.
 
 ## 18. Backup och återställning
-Backend ska kunna skapa verifierbara backup/export-artefakter och arkivera dem till Drive. Backupflödet ska senare definiera omfattning, frekvens, checksummor, retention, restore-test och retry. Backupversion är inte samma sak som varje domänändring.
+Normativa regler för operativ backup, logisk export, permanent källarkiv, Drive Inbox-handoff/cleanup, retention och restore finns i `docs/architecture/BACKUP_RESTORE_ARCHIVE.md`.
+
+Lokal commit är oberoende av Drive. Backup/export/arkiv är separata artefaktklasser och backupversion är inte samma sak som varje domänändring.
 
 ## 19. Specifikationer och Git-flöde
 Aktuella utvecklingsspecifikationer finns i Git-repot:
