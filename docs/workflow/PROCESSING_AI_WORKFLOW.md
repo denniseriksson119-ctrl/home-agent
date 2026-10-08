@@ -62,6 +62,8 @@ The user reviews meaning, not YAML, checksums, filenames or database mechanics.
 Backend validates the proposal and references, applies the accepted change atomically to the local operational database and records audit/history. Commit is distinct from analysis and archive.
 
 ## 11. Archive
+Normative storage, verification and recovery semantics are defined in `docs/architecture/BACKUP_RESTORE_ARCHIVE.md`.
+
 Once source classification/relations are sufficiently established, backend places original material in its permanent archive destination and verifies the resulting storage reference. Archive failure does not roll back a successful Home Graph commit; it remains retryable operational work.
 
 ## 12. External ingest cleanup
