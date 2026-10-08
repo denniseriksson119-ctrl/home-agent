@@ -52,7 +52,7 @@ Grundmodell:
 
 Därutöver finns bland annat Maintenance, Event, Expense, Warranty och Follow-up.
 
-Beständiga objekt ska ha stabila ID:n.
+Beständiga objekt ska ha opaka, permanenta maskinskapade interna ID:n enligt `DATA_MODEL.md` (målformat UUIDv7). Namn, sluggar och legacy-/externa ID:n är attribut/mappings och får aldrig vara intern identitet.
 
 Floor är våning. Room är normalt rum. Space är ett fysiskt utrymme som inte lämpligen är ett vanligt rum. Fysisk placering hålls separat från systemtillhörighet.
 
@@ -103,6 +103,9 @@ Inbox har beständigt bearbetningstillstånd. Backend, inte AI-minne eller chatt
 Bearbetning ska kunna pausas och återupptas utan att redan färdigbehandlat material behöver analyseras om. Vid återupptagning fortsätter Home Agent från sparat lokalt tillstånd.
 
 Batchanalys ska kunna analysera flera Inbox-objekt tillsammans när det förbättrar kontexten, exempelvis bilder, faktura och dokument från samma arbete.
+
+## 9.2 Processing pipeline
+Normativ ingestion, deduplicering, parsing/extraktion, AI-analys, proposal, commit, arkivering, extern Inbox-cleanup, pause/resume och retry definieras i `docs/workflow/PROCESSING_AI_WORKFLOW.md`. Identitet, provenance och source-/dedupe-semantik definieras i `docs/architecture/DATA_MODEL.md`.
 
 ## 10. Dokument och bilder
 Original bevaras. Metadata och relationer kan koppla dokument/bilder till Asset, System, Component, Project, Room, Space och Event. Drive-arkivering är en backend-funktion; användaren ska inte behöva känna till Drive-mappar.
