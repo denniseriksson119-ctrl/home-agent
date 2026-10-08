@@ -85,9 +85,9 @@ def inbox_page(rows, queue_state=None):
     body = ("<h1>Inbox</h1><p class='sub'>Här samlas nytt material innan det bearbetas.</p>"
             "<div class='sectionrow'><span class='pill'>%s väntar</span>"
             "<a class='text-link' href='/add'>+ Lägg till</a></div>"
-            "<div class='info-card'><strong>Redo för framtida analys</strong>"
-            "<p>Originalen är sparade lokalt. Automatisk analys är ännu inte aktiverad.</p>"
-            "<span class='pill gray'>Analys kommer senare</span></div>" % count)
+            "<div class='info-card'><strong>Teknisk kontroll av original</strong>"
+            "<p>Originalen är sparade lokalt. Arbetskön verifierar filer; AI-analys kommer senare.</p>"
+            "<span class='pill gray'>AI-analys kommer senare</span></div>" % count)
     if queue_state:
         control, counts = queue_state
         body += ("<div class='card'><strong>Teknisk förbehandling</strong>"
