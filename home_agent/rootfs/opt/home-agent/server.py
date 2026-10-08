@@ -146,11 +146,11 @@ def relation_rows(data, identities):
             add(str(space.get("id", "")), "parent", floor_id)
     return sorted(result)
 
-def import_database(data, text):
+def import_database(data, text, audit_entry=None):
     init_db()
     rows = object_rows(data)
     with sqlite3.connect(DB_FILE) as db:
-        db.execute("BEGIN")
+        db.execute("BEGIN IMMEDIATE")
         db.execute("DELETE FROM objects")
         db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
         for legacy_id, object_type, _name, _parent, _yaml in rows:
@@ -162,6 +162,8 @@ def import_database(data, text):
                       ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
                       yaml_text=excluded.yaml_text, imported_at=CURRENT_TIMESTAMP""",
                    (str(data.get("schema_version", "")), text))
+        if audit_entry:
+            db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)", audit_entry)
         db.commit()
 
 def bootstrap_database():
@@ -262,11 +264,7 @@ def add_room_note(data, room_id, note):
              "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
              "text": note, "source": "user"}
     room["notes"].append(entry)
-    save_working_data(data)
-    with sqlite3.connect(DB_FILE) as db:
-        db.execute("INSERT INTO change_log(object_id, field_name, old_value, new_value) VALUES(?,?,?,?)",
-                   (room_id, "note_added", None, note))
-        db.commit()
+    import_database(data, yaml.safe_dump(data, allow_unicode=True, sort_keys=False), (room_id, "note_added", None, note))
     return entry
 
 
@@ -390,7 +388,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.0c1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.0d1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
