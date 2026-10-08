@@ -1,5 +1,5 @@
 name: Home Agent
-version: "0.7.1a1"
+version: "0.7.1b1"
 slug: home_agent
 description: Local Home Agent service for Home Assistant
 url: https://github.com/denniseriksson119-ctrl/home-agent
