@@ -184,7 +184,12 @@ def database_diagnostics():
         unmapped = db.execute("SELECT COUNT(*) FROM objects o LEFT JOIN object_identity i ON i.object_type=o.object_type AND i.legacy_id=o.object_id WHERE i.permanent_id IS NULL").fetchone()[0]
         relations = db.execute("SELECT COUNT(*) FROM object_relation").fetchone()[0]
         broken = db.execute("SELECT COUNT(*) FROM object_relation r LEFT JOIN object_identity s ON s.permanent_id=r.source_id LEFT JOIN object_identity t ON t.permanent_id=r.target_id WHERE s.permanent_id IS NULL OR t.permanent_id IS NULL").fetchone()[0]
-    return version[0] if version else 0, objects, identities, unmapped, relations, broken
+        sources = db.execute("SELECT COUNT(*) FROM source").fetchone()[0]
+        occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence").fetchone()[0]
+        inbox_items = db.execute("SELECT COUNT(*) FROM inbox_item").fetchone()[0]
+        orphan_occurrences = db.execute("SELECT COUNT(*) FROM ingest_occurrence o LEFT JOIN source s ON s.source_id=o.source_id WHERE o.source_id IS NOT NULL AND s.source_id IS NULL").fetchone()[0]
+        orphan_inbox = db.execute("SELECT COUNT(*) FROM inbox_item i LEFT JOIN source s ON s.source_id=i.source_id WHERE s.source_id IS NULL").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox
 
 def load_home():
     try:
@@ -340,7 +345,7 @@ def room_page(data, room_id):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            f"<title>{name} - Home Agent</title></head><body>",
-           "<p><a href='/'>← Espås Hills</a></p>",
+           "<p><a href='/'>← Home</a></p>",
            f"<h1>{name}</h1><p>{floor_name}</p>"]
 
     features = room.get("features", []) or []
@@ -385,7 +390,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.0b1</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.0c1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -442,8 +447,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
             return
         if parsed.path == "/diagnostics":
-            schema, objects, identities, unmapped, relations, broken = database_diagnostics()
-            body = ("schema_version=%s\\nobjects=%s\\nidentities=%s\\nunmapped_objects=%s\\nrelations=%s\\nbroken_relations=%s\\n" % (schema, objects, identities, unmapped, relations, broken)).encode("utf-8")
+            schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox = database_diagnostics()
+            body = ("schema_version=%s\nobjects=%s\nidentities=%s\nunmapped_objects=%s\nrelations=%s\nbroken_relations=%s\nsources=%s\ningest_occurrences=%s\ninbox_items=%s\norphan_occurrences=%s\norphan_inbox_items=%s\n" % (schema, objects, identities, unmapped, relations, broken, sources, occurrences, inbox_items, orphan_occurrences, orphan_inbox)).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
