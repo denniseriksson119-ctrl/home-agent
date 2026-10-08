@@ -26,3 +26,19 @@ Ordinary explicit manual edits can save directly. AI-proposed changes require se
 **Status:** Accepted
 
 UI design is specified incrementally alongside prototypes. Important decisions are added to the UI spec and this decision log before implementation so later ideas can be checked against earlier principles.
+
+
+## DD-011 — Capture and processing are separate
+**Status:** Accepted
+
+Users must be able to capture source material immediately without being forced to run AI analysis or complete structured registration at that moment. The product supports both “analyze now” and “save to Inbox for later”.
+
+## DD-012 — Inbox belongs to Home Agent
+**Status:** Accepted
+
+Inbox is a Home Agent queue/domain concept for unprocessed source material and can receive input from multiple channels. Google Drive Inbox may remain a convenient ingest/drop channel, but it is not the operational Inbox or source of truth.
+
+## DD-013 — Batch analysis is first-class
+**Status:** Accepted
+
+Users can later analyze multiple Inbox items together. Joint analysis is allowed and encouraged when several sources may describe the same event, object or work, while every extracted fact retains source provenance.
