@@ -80,20 +80,30 @@ def rooms_page(data):
         body += "</div>"
     return shell("Rum", body)
 
-def inbox_page(rows):
+def inbox_page(rows, queue_state=None):
     count = sum(1 for r in rows if r[3] in ("pending", "paused", "failed"))
     body = ("<h1>Inbox</h1><p class='sub'>Här samlas nytt material innan det bearbetas.</p>"
             "<div class='sectionrow'><span class='pill'>%s väntar</span>"
             "<a class='text-link' href='/add'>+ Lägg till</a></div>"
-            "<div class='info-card'><strong>Redo för framtida analys</strong>"
-            "<p>Originalen är sparade lokalt. Automatisk analys är ännu inte aktiverad.</p>"
-            "<span class='pill gray'>Analys kommer senare</span></div>" % count)
+            "<div class='info-card'><strong>Teknisk kontroll av original</strong>"
+            "<p>Originalen är sparade lokalt. Arbetskön verifierar filer; AI-analys kommer senare.</p>"
+            "<span class='pill gray'>AI-analys kommer senare</span></div>" % count)
+    if queue_state:
+        control, counts = queue_state
+        body += ("<div class='card'><strong>Teknisk förbehandling</strong>"
+                 "<p>Kontrollerar sparade originalfiler. Semantisk AI-analys ingår inte.</p>"
+                 "<p>Kö: %s · Väntande: %s · Pågår: %s · Väntar på AI: %s · Fel: %s</p>"
+                 "<form method='post' action='/inbox/%s'><button type='submit'>%s</button></form>"
+                 "</div>" % (esc(control), counts.get('pending',0), counts.get('processing',0),
+                            counts.get('awaiting_ai',0), counts.get('failed',0),
+                            'resume' if control == 'paused' else 'pause' if control == 'running' else 'analyze',
+                            'Återuppta analys' if control == 'paused' else 'Pausa analys' if control == 'running' else 'Analysera Inbox'))
     if not rows:
         body += "<div class='card empty'>Inbox är tom. <a href='/add'>Lägg till en fil</a>.</div>"
     for inbox_id, created, stage, status, filename, media, source_id, channel, occurrence_id in rows:
         label = "Bild" if (media or "").startswith("image/") else "Dokument" if media else "Fil"
         icon = "🖼️" if label == "Bild" else "📄"
-        status_label = {"pending":"Väntar på analys","paused":"Pausad","failed":"Behöver åtgärd"}.get(status, "Under behandling")
+        status_label = {"pending":"Väntar på analys","paused":"Pausad","failed":"Behöver åtgärd","awaiting_ai":"Tekniskt kontrollerad · väntar på AI","processing":"Kontrolleras"}.get(status, "Under behandling")
         body += ("<article class='card'><div class='line'><span class='ico'>%s</span>"
                  "<div class='grow'><strong class='name'>%s</strong>"
                  "<small class='muted'>%s · %s</small></div></div>"
