@@ -605,4 +605,5 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(format % args)
 
-HTTPServer((HOST, PORT), Handler).serve_forever()
+if __name__ == "__main__":
+    HTTPServer((HOST, PORT), Handler).serve_forever()
