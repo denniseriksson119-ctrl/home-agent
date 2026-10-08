@@ -324,9 +324,9 @@ def inbox_page():
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Inbox - Home Agent</title></head><body>",
            "<p><a href='/'>← Home</a></p><h1>Inbox</h1>",
-           "<p>Persistent captured sources; no AI analysis has run.</p>"]
+           "<p><div class='ha-panel'><strong>Väntar på analys</strong><p>Filerna är tryggt sparade lokalt. Automatisk analys kommer i ett senare steg; inga uppgifter har registrerats.</p></div></p>"]
     if not rows:
-        out.append("<p>Inbox is empty.</p>")
+        out.append("<p>Inbox är tom. Lägg till en fil från startsidan.</p>")
     else:
         out.append("<ul>")
         for inbox_id, created_at, stage, status, original_name, media_type, source_id, channel, occurrence_id in rows:
@@ -336,7 +336,7 @@ def inbox_page():
                 out.append(" · " + html.escape(str(media_type)))
             if channel:
                 out.append(" · " + html.escape(str(channel)))
-            out.append("<details><summary>Technical IDs</summary><small>InboxItem " + html.escape(str(inbox_id)) +
+            out.append("<details><summary>Tekniska ID:n</summary><small>InboxItem " + html.escape(str(inbox_id)) +
                        "<br>Source " + html.escape(str(source_id)) +
                        "<br>IngestOccurrence " + html.escape(str(occurrence_id or "")) + "</small></details></li>")
         out.append("</ul>")
@@ -463,7 +463,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.7.1b2</p><p><a href='/inbox'>Inbox</a></p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.1c</p><p><a href='/inbox'>Inbox</a></p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -492,10 +492,10 @@ def render(data, error=None, notice=None):
                 for space in spaces or []:
                     out.append(f"<li>{html.escape(str(space.get('name', space.get('id', 'Space'))))} <em>(space)</em></li>")
                 out.append("</ul>")
-    out.append("""<hr><h2>Add to Inbox</h2>
+    out.append("""<hr><h2>Lägg till i Inbox</h2>
 <form method="post" action="/capture" enctype="multipart/form-data">
 <input type="file" name="source" required>
-<button type="submit">Save to Inbox</button>
+<button type="submit">Spara i Inbox</button>
 </form>
 <p>The original file is stored locally before an Inbox item is created.</p>
 <hr><h2>Import YAML snapshot</h2>
@@ -509,6 +509,10 @@ def render(data, error=None, notice=None):
 
 class Handler(BaseHTTPRequestHandler):
     def send_page(self, body, status=200):
+        if b"<html" in body.lower():
+            body = body.replace(b"</head>", b"<link rel='stylesheet' href='/ui.css'></head>", 1)
+            nav = b"<nav class='ha-nav' aria-label='Navigation'><a href='/'>Hem</a><a href='/inbox'>Inbox</a></nav>"
+            body = body.replace(b"</body>", nav + b"</body>", 1)
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -517,6 +521,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/ui.css":
+            css = Path("/opt/home-agent/ui.css").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/css; charset=utf-8")
+            self.send_header("Content-Length", str(len(css)))
+            self.end_headers()
+            self.wfile.write(css)
+            return
         if parsed.path == "/health":
             body = b"ok"
             self.send_response(200)
