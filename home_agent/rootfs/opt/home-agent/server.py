@@ -18,7 +18,7 @@ DATA_FILE = Path("/data/home.yaml")
 DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 1
+DB_SCHEMA_VERSION = 2
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -46,6 +46,10 @@ def migrate_db(db):
             db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), str(object_type), str(legacy_id)))
         db.execute("INSERT INTO schema_meta(singleton, version) VALUES(1,1) ON CONFLICT(singleton) DO UPDATE SET version=excluded.version")
         version = 1
+    if version < 2:
+        db.execute("CREATE TABLE IF NOT EXISTS object_relation (source_id TEXT NOT NULL, relation_type TEXT NOT NULL, target_id TEXT NOT NULL, legacy_source_ref TEXT, legacy_target_ref TEXT, PRIMARY KEY(source_id, relation_type, target_id))")
+        db.execute("UPDATE schema_meta SET version=2 WHERE singleton=1")
+        version = 2
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
@@ -105,6 +109,33 @@ def object_rows(data):
             add(item, key.rstrip("s"), str(home.get("id", "")))
     return rows
 
+def identity_map(db):
+    return {str(legacy): str(permanent) for permanent, legacy in db.execute("SELECT permanent_id, legacy_id FROM object_identity").fetchall()}
+
+def relation_rows(data, identities):
+    home = find_home(data)
+    if not home:
+        return []
+    result = set()
+    def add(source, relation, target):
+        source_id = identities.get(str(source))
+        target_id = identities.get(str(target))
+        if source_id and target_id:
+            result.add((source_id, relation, target_id, str(source), str(target)))
+    home_id = str(home.get("id", ""))
+    for floor in home.get("floors", []) or []:
+        floor_id = str(floor.get("id", ""))
+        add(floor_id, "parent", home_id)
+        for room in floor.get("rooms", []) or []:
+            room_id = str(room.get("id", ""))
+            add(room_id, "parent", floor_id)
+            for field, relation in (("system_refs", "system"), ("component_refs", "component"), ("asset_refs", "asset")):
+                for target in room.get(field, []) or []:
+                    add(room_id, relation, target)
+        for space in floor.get("spaces", []) or []:
+            add(str(space.get("id", "")), "parent", floor_id)
+    return sorted(result)
+
 def import_database(data, text):
     init_db()
     rows = object_rows(data)
@@ -114,6 +145,8 @@ def import_database(data, text):
         db.executemany("INSERT INTO objects(object_id, object_type, name, parent_id, yaml_text) VALUES(?,?,?,?,?)", rows)
         for legacy_id, object_type, _name, _parent, _yaml in rows:
             db.execute("INSERT OR IGNORE INTO object_identity(permanent_id, object_type, legacy_id) VALUES(?,?,?)", (uuid7(), object_type, legacy_id))
+        db.execute("DELETE FROM object_relation")
+        db.executemany("INSERT INTO object_relation(source_id, relation_type, target_id, legacy_source_ref, legacy_target_ref) VALUES(?,?,?,?,?)", relation_rows(data, identity_map(db)))
         db.execute("""INSERT INTO snapshot(id, schema_version, yaml_text, imported_at)
                       VALUES(1, ?, ?, CURRENT_TIMESTAMP)
                       ON CONFLICT(id) DO UPDATE SET schema_version=excluded.schema_version,
@@ -131,6 +164,17 @@ def bootstrap_database():
         error = validate_snapshot(data)
         if not error:
             import_database(data, text)
+
+def database_diagnostics():
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        version = db.execute("SELECT version FROM schema_meta WHERE singleton=1").fetchone()
+        objects = db.execute("SELECT COUNT(*) FROM objects").fetchone()[0]
+        identities = db.execute("SELECT COUNT(*) FROM object_identity").fetchone()[0]
+        unmapped = db.execute("SELECT COUNT(*) FROM objects o LEFT JOIN object_identity i ON i.object_type=o.object_type AND i.legacy_id=o.object_id WHERE i.permanent_id IS NULL").fetchone()[0]
+        relations = db.execute("SELECT COUNT(*) FROM object_relation").fetchone()[0]
+        broken = db.execute("SELECT COUNT(*) FROM object_relation r LEFT JOIN object_identity s ON s.permanent_id=r.source_id LEFT JOIN object_identity t ON t.permanent_id=r.target_id WHERE s.permanent_id IS NULL OR t.permanent_id IS NULL").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken
 
 def load_home():
     try:
@@ -331,7 +375,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.6.2</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.0b1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -383,6 +427,15 @@ class Handler(BaseHTTPRequestHandler):
             body = b"ok"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if parsed.path == "/diagnostics":
+            schema, objects, identities, unmapped, relations, broken = database_diagnostics()
+            body = ("schema_version=%s\\nobjects=%s\\nidentities=%s\\nunmapped_objects=%s\\nrelations=%s\\nbroken_relations=%s\\n" % (schema, objects, identities, unmapped, relations, broken)).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
