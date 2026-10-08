@@ -96,6 +96,12 @@ Två likvärdiga ingångar stöds:
 
 Google Drive Inbox får användas som en extern ingest-kanal. Home Agent kan importera/synkronisera material därifrån till sin egen Inbox, men Drive-mappen är inte Home Agents operativa kö eller source of truth.
 
+Normalfallet är **Analysera Inbox**: Home Agent arbetar själv igenom den persistenta kön, grupperar sannolikt relaterat material och skapar förslag utan att användaren först måste välja filer. Manuellt urval är ett sekundärt specialfall.
+
+Inbox har beständigt bearbetningstillstånd. Backend, inte AI-minne eller chattsessionen, håller deterministiskt reda på progressionen. Ett Inbox-objekt kan exempelvis vara nytt, analyserat, kopplat till förslag, väntande på granskning, registrerat och arkiverat. Analysstatus och registreringsstatus ska hållas isär.
+
+Bearbetning ska kunna pausas och återupptas utan att redan färdigbehandlat material behöver analyseras om. Vid återupptagning fortsätter Home Agent från sparat lokalt tillstånd.
+
 Batchanalys ska kunna analysera flera Inbox-objekt tillsammans när det förbättrar kontexten, exempelvis bilder, faktura och dokument från samma arbete.
 
 ## 10. Dokument och bilder
