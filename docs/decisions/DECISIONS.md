@@ -152,3 +152,34 @@ Domain identity and recovery semantics do not depend on Raspberry Pi disk paths,
 **Status:** Accepted
 
 AI, Drive or Home Assistant outages must not corrupt local operational state or unnecessarily disable unrelated local operations. Integration work is validated, retryable and idempotent where applicable.
+
+
+## DD-035 — Source, IngestOccurrence and InboxItem are separate identities
+**Status:** Accepted
+
+Source is canonical evidence, IngestOccurrence records each arrival/channel occurrence, and InboxItem records persistent processing work. Exact duplicate arrivals may resolve to one Source without losing ingest provenance.
+
+## DD-036 — Source custody precedes semantic classification
+**Status:** Accepted
+
+Home Agent secures/verifies local custody and checksum before relying on AI classification or cleaning an external ingest location. Classification is not required to preserve an original safely.
+
+## DD-037 — Archive is human-browsable but semantically neutral
+**Status:** Accepted
+
+Physical archive folders and filenames optimize human findability and preservation. Home Graph references carry Room/Asset/System/Project/Event meaning. Archive paths never encode required domain relationships or identity.
+
+## DD-038 — Archive uses coarse type/time organization
+**Status:** Accepted
+
+Default archive organization uses coarse categories such as Photos by year/month and Documents by stable document type, optionally year. It does not create canonical per-room/per-asset/per-system folder trees.
+
+## DD-039 — Human-readable archive names do not define identity
+**Status:** Accepted
+
+Archived files may be renamed to date + short description + short Source-ID hint while original filename remains metadata and original bytes remain unchanged. Full permanent Source ID and checksum remain authoritative.
+
+## DD-040 — Processing state transitions are explicit and resumable
+**Status:** Accepted
+
+Captured, dedupe-checked, parsed, analyzed, review/proposal, registered, archive, cleanup and completion are distinguishable durable states. Failure/retry never erases prior successful stages; analyzed does not imply registered and archived does not imply cleanup completed.
