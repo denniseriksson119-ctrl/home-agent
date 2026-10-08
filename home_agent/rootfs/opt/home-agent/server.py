@@ -165,6 +165,17 @@ def bootstrap_database():
         if not error:
             import_database(data, text)
 
+def database_diagnostics():
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        version = db.execute("SELECT version FROM schema_meta WHERE singleton=1").fetchone()
+        objects = db.execute("SELECT COUNT(*) FROM objects").fetchone()[0]
+        identities = db.execute("SELECT COUNT(*) FROM object_identity").fetchone()[0]
+        unmapped = db.execute("SELECT COUNT(*) FROM objects o LEFT JOIN object_identity i ON i.object_type=o.object_type AND i.legacy_id=o.object_id WHERE i.permanent_id IS NULL").fetchone()[0]
+        relations = db.execute("SELECT COUNT(*) FROM object_relation").fetchone()[0]
+        broken = db.execute("SELECT COUNT(*) FROM object_relation r LEFT JOIN object_identity s ON s.permanent_id=r.source_id LEFT JOIN object_identity t ON t.permanent_id=r.target_id WHERE s.permanent_id IS NULL OR t.permanent_id IS NULL").fetchone()[0]
+    return version[0] if version else 0, objects, identities, unmapped, relations, broken
+
 def load_home():
     try:
         bootstrap_database()
@@ -364,7 +375,7 @@ def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
            "<meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<title>Home Agent</title></head><body>",
-           "<h1>Home Agent</h1><p>Version 0.6.2</p>"]
+           "<h1>Home Agent</h1><p>Version 0.7.0b1</p>"]
     if notice:
         out.append(f"<p><strong>{html.escape(notice)}</strong></p>")
     if error:
@@ -416,6 +427,15 @@ class Handler(BaseHTTPRequestHandler):
             body = b"ok"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if parsed.path == "/diagnostics":
+            schema, objects, identities, unmapped, relations, broken = database_diagnostics()
+            body = ("schema_version=%s\\nobjects=%s\\nidentities=%s\\nunmapped_objects=%s\\nrelations=%s\\nbroken_relations=%s\\n" % (schema, objects, identities, unmapped, relations, broken)).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
