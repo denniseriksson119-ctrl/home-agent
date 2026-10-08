@@ -20,3 +20,6 @@ Older imported Drive-era workflow documents are historical/superseded unless an 
 **Idea → discussion/prototype → decision → spec/decision update → implementation → test against spec → PR → merge**
 
 Experimental implementation does not automatically become product policy.
+
+## Current implementation plan
+- **0.7 — Permanent local data foundation** — `implementation/0.7_PLAN.md`
