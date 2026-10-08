@@ -137,3 +137,61 @@ def more_page():
              "<button type='submit'>Importera</button></form></details>")
     body += "<p class='foot'>Home Agent · Lokal lagring</p>"
     return shell("Mer", body, "more")
+
+def room_detail_page(room_id, floor, room, sections, history):
+    """Render already-resolved explicit relationships, never infer room links."""
+    if not room:
+        return shell("Rum saknas", "<h1>Rummet hittades inte</h1><p><a href='/rooms'>← Alla rum</a></p>")
+    body = ("<a class='text-link' href='/rooms'>← Alla rum</a>"
+            "<p class='eyebrow room-eyebrow'>RUM</p><h1>%s</h1>"
+            "<p class='sub'>%s</p>" % (esc(room.get("name", room_id)), esc(floor.get("name", ""))))
+    notes = room.get("notes") or []
+    if isinstance(notes, str):
+        notes = [notes] if notes.strip() else []
+    notes_count = len(notes) if isinstance(notes, list) else 0
+    equipment_count = sum(len(sections.get(key, [])) for key in ("System", "Utrustning", "Komponenter"))
+    body += ("<div class='actions room-stats'><a class='action' href='#notes'><span>📝</span>"
+             "<strong>Anteckningar</strong><small>%s st</small></a>"
+             "<a class='action' href='#related'><span>🔧</span>"
+             "<strong>System & utrustning</strong><small>%s kopplingar</small></a></div>" %
+             (notes_count, equipment_count))
+    body += "<div class='sectionrow' id='notes'><h2>Anteckningar</h2></div>"
+    body += "<section class='card room-section'>"
+    if notes_count:
+        for note in reversed(notes):
+            if isinstance(note, dict):
+                value, stamp = note.get("text", ""), note.get("created_at", "")
+            else:
+                value, stamp = str(note), ""
+            body += "<div class='note'><p>%s</p>%s</div>" % (
+                esc(value), "<small class='muted'>%s</small>" % esc(stamp) if stamp else "")
+    else:
+        body += "<p class='sub'>Inga anteckningar ännu.</p>"
+    body += ("<details class='note-add'><summary>+ Lägg till anteckning</summary>"
+             "<form class='room-note-form' method='post' action='/add-note'>"
+             "<input type='hidden' name='room_id' value='%s'>"
+             "<label for='note'>Ny anteckning</label>"
+             "<textarea id='note' name='note' rows='3' required maxlength='5000'></textarea>"
+             "<button type='submit'>Spara anteckning</button></form></details></section>" % esc(room_id))
+    body += "<h2 id='related'>Relaterat till rummet</h2>"
+    any_related = False
+    for title, items in sections.items():
+        if not items:
+            continue
+        any_related = True
+        body += "<section class='card room-section'><strong>%s</strong><ul class='related-list'>" % esc(title)
+        for item in items:
+            body += "<li>%s</li>" % esc(item.get("name") or item.get("id") or "Namnlöst objekt")
+        body += "</ul></section>"
+    if not any_related:
+        body += "<div class='card empty'>Inga kopplade objekt ännu.</div>"
+    if history:
+        body += "<h2>Ändringshistorik</h2><section class='card room-section'>"
+        for committed_at, field_name, old_value, new_value in history:
+            body += ("<div class='note'><small class='muted'>%s · %s</small>"
+                     "<p>%s</p></div>" % (esc(committed_at), esc(field_name), esc(new_value)))
+        body += "</section>"
+    body += ("<details class='card technical'><summary>Tekniska detaljer</summary>"
+             "<p class='sub'>Rådata och interna fält visas separat från rummets vanliga information.</p>"
+             "<pre>%s</pre></details>" % esc(__import__("yaml").safe_dump(room, allow_unicode=True, sort_keys=False)))
+    return shell(str(room.get("name", "Rum")), body)
