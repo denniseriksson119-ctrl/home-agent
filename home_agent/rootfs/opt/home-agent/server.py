@@ -6,6 +6,7 @@ import ui
 import inbox_queue
 import drive_import
 import drive_register
+import drive_auth
 import copy
 import hashlib
 import difflib
@@ -25,7 +26,7 @@ PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
 DB_SCHEMA_VERSION = 5
-DRIVE_TOKEN_FILE = Path('/data/drive_import_access_token')
+DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
 DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 
 def load_yaml(path):
@@ -330,7 +331,7 @@ def import_drive_asset(asset_id, file_id):
     """Import only a file proven to descend from the configured shared root."""
     if not asset_detail(asset_id)[0]:
         raise ValueError("Unknown asset")
-    token = DRIVE_TOKEN_FILE.read_text(encoding="utf-8").strip()
+    token = drive_auth.access_token(DRIVE_AUTH_FILE)
     root_id = DRIVE_ROOT_FILE.read_text(encoding="utf-8").strip()
     if not token or not root_id:
         raise ValueError("Drive import account is not configured")
@@ -723,7 +724,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(303)
                 self.send_header('Location', '/asset?id=' + quote(asset_id, safe=''))
                 self.end_headers()
-            except (ValueError, OSError, drive_import.DriveImportError) as exc:
+            except (ValueError, OSError, drive_import.DriveImportError, drive_auth.DriveAuthError) as exc:
                 self.send_error(400, str(exc))
             return
         if path == '/asset/link':
