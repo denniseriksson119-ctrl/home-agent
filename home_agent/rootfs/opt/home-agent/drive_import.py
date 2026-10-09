@@ -38,7 +38,7 @@ def metadata(file_id, token):
             data = json.load(response)
     except (OSError, ValueError) as exc:
         raise DriveImportError("Unable to read Drive file metadata") from exc
-    if data.get("trashed") or data.get("mimeType", "").startswith("application/vnd.google-apps."):
+    if data.get("trashed"):
         raise DriveImportError("Trashed files and Google Workspace documents are not supported")
     return data
 
@@ -50,6 +50,8 @@ def download_original(file_id, token, destination, max_bytes=MAX_FILE_BYTES):
     content-addressed store or delete it. This function never modifies Drive.
     """
     info = metadata(file_id, token)
+    if info.get("mimeType", "").startswith("application/vnd.google-apps."):
+        raise DriveImportError("Google-native files cannot be downloaded as binary originals")
     declared = info.get("size")
     if declared is not None and int(declared) > max_bytes:
         raise DriveImportError("Drive file exceeds import size limit")
