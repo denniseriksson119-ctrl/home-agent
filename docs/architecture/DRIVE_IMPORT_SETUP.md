@@ -26,3 +26,12 @@ OAuth-konfigurationsfilen måste ha filrättigheter `0600`. Servern förnyar acc
 - Testa faktisk Drive API-åtkomst och hela importflödet på Pi.
 - Automatiserade tester för deduplicering, avbrutna hämtningar, felaktig rot och nekad behörighet.
 - Granska atomisk lagring och felåterhämtning vid ström-/diskfel.
+
+## Första inloggningen på egen dator
+
+1. Skapa en OAuth-klient av typen **Desktop app** i ett Google Cloud-projekt som du kontrollerar. Aktivera Google Drive API, konfigurera OAuth consent och nödvändiga scopes (`openid`, `email`, `drive.readonly`). Lägg det särskilda Home Agent-kontot bland testanvändare om appen är i testläge.
+2. Kör `python3 tools/drive_oauth_setup.py CLIENT_ID CLIENT_SECRET HOME_AGENT_EMAIL` **på din egen dator** med webbläsare. Välj endast det begränsade Home Agent-kontot vid Google-inloggningen.
+3. Skriptet skapar `drive_import_oauth.json` med behörighet 0600 i aktuell katalog. Kopiera filen säkert till `/data/drive_import_oauth.json` på Pi, och skapa `/data/drive_import_root_id` med ID för den delade rotmappen. Dessa filer ska inte ligga i Git eller delas i chatten.
+4. Starta om add-on och prova import från utrustningssidan med ett Drive-fil-ID. Kontrollera att originalet visas på utrustningen och att Drive-originalet är oförändrat.
+
+**Obs:** OAuth-appar i Google Cloud med status Testing kan ge refresh-token med kort livslängd. För långsiktig drift krävs korrekt OAuth-konfiguration och eventuellt ny inloggning. Läsbegränsningen är på API-scope-nivå; ett vanligt `drive.readonly`-scope kan tekniskt läsa andra filer som importkontot har tillgång till. Använd därför ett separat konto med åtkomst endast till avsedd delning.
