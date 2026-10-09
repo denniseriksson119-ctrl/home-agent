@@ -6,7 +6,6 @@ import ui
 import inbox_queue
 import copy
 import hashlib
-import mimetypes
 import difflib
 import html
 import os
