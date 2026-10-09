@@ -183,3 +183,8 @@ Archived files may be renamed to date + short description + short Source-ID hint
 **Status:** Accepted
 
 Captured, dedupe-checked, parsed, analyzed, review/proposal, registered, archive, cleanup and completion are distinguishable durable states. Failure/retry never erases prior successful stages; analyzed does not imply registered and archived does not imply cleanup completed.
+
+## DD-024 — Asset-first resource presentation
+**Status:** Accepted
+
+Start with one canonical Asset detail page displaying a lead image, thumbnails and a complete **Bilder & dokument** section. Files are immutable Sources with explicit permanent-ID links, not copies in semantic folders. Contextual manual upload and reuse of existing Sources are supported. Room/System navigation can link to the same Asset page later. Legacy Drive paths are provenance, not the storage model.

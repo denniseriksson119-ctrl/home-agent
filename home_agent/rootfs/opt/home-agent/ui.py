@@ -60,6 +60,7 @@ def home_page(data, inbox_count, notice=None, error=None):
             (esc(name), room_count, inbox_count))
     body += card_link("/inbox", "📥", "%s filer i Inbox" % inbox_count, "Sparade lokalt · väntar på analys")
     body += card_link("/rooms", "🏠", "Rum och utrymmen", "Utforska hemstrukturen")
+    body += card_link("/assets", "🔧", "Utrustning", "Visa kopplade bilder och dokument")
     if not home:
         body += "<p class='sub'>Ingen hemstruktur importerad ännu.</p>"
     return shell("Hem", body, notice=notice, error=error)
@@ -145,6 +146,7 @@ def search_page():
 def more_page():
     body = "<h1>Mer</h1><p class='sub'>Fler vyer och verktyg.</p>"
     body += card_link("/rooms", "🏠", "Rum och utrymmen", "Visa alla rum")
+    body += card_link("/assets", "🔧", "Utrustning", "Visa utrustningssidor")
     body += card_link("/inbox", "📥", "Inbox", "Visa sparade filer")
     body += "<details class='card'><summary>Importera YAML (avancerat)</summary>"
     body += ("<form method='post' action='/import' enctype='multipart/form-data'>"
@@ -210,3 +212,48 @@ def room_detail_page(room_id, floor, room, sections, history):
              "<p class='sub'>Rådata och interna fält visas separat från rummets vanliga information.</p>"
              "<pre>%s</pre></details>" % esc(__import__("yaml").safe_dump(room, allow_unicode=True, sort_keys=False)))
     return shell(str(room.get("name", "Rum")), body)
+
+def assets_page(rows):
+    body = "<h1>Utrustning</h1><p class='sub'>Välj utrustning för att se bilder och dokument.</p>"
+    for asset_id,name in rows:
+        body += card_link("/asset?id="+quote(asset_id,safe=""),"🔧",name or "Utrustning","Visa detaljer och filer")
+    if not rows:
+        body += "<div class='card empty'>Ingen utrustning importerad ännu.</div>"
+    return shell("Utrustning",body)
+
+def asset_page(asset, files, candidates):
+    if not asset:
+        return shell("Saknas","<h1>Utrustningen hittades inte</h1><a href='/assets'>← Utrustning</a>")
+    aid = quote(asset["id"],safe="")
+    body = "<a class='text-link' href='/assets'>← Utrustning</a><p class='eyebrow'>UTRUSTNING</p><h1>%s</h1>" % esc(asset["name"] or "Utrustning")
+    images = [(sid,name,media) for sid,name,media in files if (media or "").startswith("image/")]
+    if images:
+        sid,name,_ = images[0]
+        body += "<div class='asset-hero'><a href='/source/file?asset=%s&amp;id=%s' target='_blank' rel='noopener'><img alt='%s' src='/source/file?asset=%s&amp;id=%s'></a></div>" % (aid,quote(sid,safe=""),esc(name or "Bild"),aid,quote(sid,safe=""))
+    body += "<h2>Bilder &amp; dokument</h2>"
+    if images:
+        body += "<div class='asset-gallery'>"
+        for sid,name,_ in images[:4]:
+            url = "/source/file?asset=%s&amp;id=%s" % (aid,quote(sid,safe=""))
+            body += "<a href='%s' target='_blank' rel='noopener'><img loading='lazy' src='%s' alt='%s'></a>" % (url,url,esc(name or "Bild"))
+        body += "</div>"
+    if not files:
+        body += "<div class='card empty'>Inga kopplade filer ännu.</div>"
+    for sid,name,media in files:
+        url = "/source/file?asset=%s&amp;id=%s" % (aid,quote(sid,safe=""))
+        body += "<a class='card line card-link' target='_blank' rel='noopener' href='%s'><span class='ico'>%s</span><span class='grow'><strong class='name'>%s</strong><small class='muted'>%s</small></span><span class='arrow'>↗</span></a>" % (url,"🖼️" if (media or "").startswith("image/") else "📄",esc(name or "Namnlös fil"),esc(media or "Fil"))
+    body += ("<details class='card'><summary>+ Ladda upp fil</summary>"
+             "<form class='upload' action='/asset/upload' method='post' enctype='multipart/form-data'>"
+             "<input type='hidden' name='asset_id' value='%s'><input type='file' name='source' required>"
+             "<button type='submit'>Spara och koppla</button></form></details>" % esc(asset["id"]))
+    linked = {sid for sid,_,_ in files}
+    available = [(sid,name,media) for sid,name,media in candidates if sid not in linked]
+    if available:
+        body += ("<details class='card'><summary>+ Koppla befintlig fil</summary>"
+                 "<form method='post' action='/asset/link'><input type='hidden' name='asset_id' value='%s'>"
+                 "<label for='source_id'>Fil i lokalt arkiv</label><select name='source_id' id='source_id'>" % esc(asset["id"]))
+        for sid,name,media in available:
+            body += "<option value='%s'>%s</option>" % (esc(sid),esc(name or sid))
+        body += "</select><button type='submit'>Koppla fil</button></form></details>"
+    body += "<details class='card technical'><summary>Tekniska detaljer</summary><pre>%s</pre></details>" % esc(__import__("yaml").safe_dump(asset["data"],allow_unicode=True,sort_keys=False))
+    return shell(asset["name"] or "Utrustning",body)
