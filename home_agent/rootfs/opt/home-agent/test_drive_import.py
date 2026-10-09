@@ -25,6 +25,17 @@ class DriveAuthorizationTests(unittest.TestCase):
             with self.assertRaises(drive_import.DriveImportError):
                 drive_import.assert_under_shared_root("file", "root", "test-token")
 
+    def test_invalid_depth(self):
+        with self.assertRaises(drive_import.DriveImportError):
+            drive_import.assert_under_shared_root("file", "root", "test-token", max_depth=0)
+
+    def test_reject_folder_download(self):
+        with patch.object(drive_import, "metadata", return_value={
+            "id": "folder", "name": "Folder",
+            "mimeType": "application/vnd.google-apps.folder"}):
+            with self.assertRaises(drive_import.DriveImportError):
+                drive_import.download_original("folder", "test-token", "/tmp")
+
     def test_root_not_file(self):
         with self.assertRaises(drive_import.DriveImportError):
             drive_import.assert_under_shared_root("root", "root", "test-token")
