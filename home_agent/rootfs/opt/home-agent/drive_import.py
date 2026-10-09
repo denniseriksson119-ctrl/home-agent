@@ -95,6 +95,8 @@ def assert_under_shared_root(file_id, root_id, token, max_depth=32):
         raise DriveImportError("Invalid configured shared root")
     if file_id == root_id:
         raise DriveImportError("Shared root is not an importable file")
+    if max_depth < 1:
+        raise DriveImportError("Invalid maximum folder depth")
     pending = [file_id]
     seen = set()
     for _ in range(max_depth):
