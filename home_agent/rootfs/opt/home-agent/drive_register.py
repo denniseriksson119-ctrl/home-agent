@@ -43,19 +43,29 @@ def register_drive_original(db_path, source_dir, downloaded, asset_id, new_id):
             raise ValueError('Matching Source is not locally verified')
         duplicate = bool(row)
         installed_path = None
-        if row:
-            source_id = row[0]
-        else:
-            source_id = new_id()
-            installed_path = source_dir / source_id
-            os.replace(temp, installed_path)
-            db.execute("""INSERT INTO source
-                          (source_id,source_type,media_type,original_name,sha256,storage_ref,custody_status)
-                          VALUES(?,?,?,?,?,?,?)""",
-                       (source_id, "file", downloaded["media_type"],
-                        downloaded["original_name"], digest.hexdigest(),
-                        str(installed_path), "local_verified"))
         try:
+            if row:
+                source_id = row[0]
+                stored_row = db.execute("SELECT storage_ref FROM source WHERE source_id=?", (source_id,)).fetchone()
+                stored = Path(stored_row[0]).resolve(strict=True)
+                if not stored.is_relative_to(source_dir.resolve()) or not stored.is_file():
+                    raise ValueError("Existing Source original unavailable")
+                stored_hash = hashlib.sha256()
+                with stored.open("rb") as original:
+                    for block in iter(lambda: original.read(256 * 1024), b""):
+                        stored_hash.update(block)
+                if stored_hash.hexdigest() != digest.hexdigest():
+                    raise ValueError("Existing Source checksum mismatch")
+            else:
+                source_id = new_id()
+                installed_path = source_dir / source_id
+                os.replace(temp, installed_path)
+                db.execute("""INSERT INTO source
+                              (source_id,source_type,media_type,original_name,sha256,storage_ref,custody_status)
+                              VALUES(?,?,?,?,?,?,?)""",
+                           (source_id, "file", downloaded["media_type"],
+                            downloaded["original_name"], digest.hexdigest(),
+                            str(installed_path), "local_verified"))
             db.execute("""INSERT INTO ingest_occurrence
                           (occurrence_id,source_id,channel,external_provider,external_ref,cleanup_status)
                           VALUES(?,?,?,?,?,?)""",
