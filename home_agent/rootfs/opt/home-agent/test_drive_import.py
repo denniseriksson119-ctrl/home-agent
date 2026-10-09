@@ -16,7 +16,7 @@ class DriveAuthorizationTests(unittest.TestCase):
                    "other": {"id": "other", "parents": []}}
         with patch.object(drive_import, "metadata", side_effect=lambda file_id, token: entries[file_id]):
             with self.assertRaises(drive_import.DriveImportError):
-                drive_import.assert_under_shared_root("file", "root", "test-token"))
+                drive_import.assert_under_shared_root("file", "root", "test-token")
 
     def test_parent_cycle(self):
         entries = {"file": {"id": "file", "parents": ["other"]},
