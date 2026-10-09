@@ -22,7 +22,7 @@ DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
-DB_SCHEMA_VERSION = 4
+DB_SCHEMA_VERSION = 5
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -68,6 +68,15 @@ def migrate_db(db):
         inbox_queue.migrate(db)
         db.execute("UPDATE schema_meta SET version=4 WHERE singleton=1")
         version = 4
+    if version < 5:
+        db.execute("""CREATE TABLE IF NOT EXISTS source_link (
+            source_id TEXT NOT NULL REFERENCES source(source_id),
+            object_id TEXT NOT NULL REFERENCES object_identity(permanent_id),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(source_id, object_id))""")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_source_link_object ON source_link(object_id)")
+        db.execute("UPDATE schema_meta SET version=5 WHERE singleton=1")
+        version = 5
     if version != DB_SCHEMA_VERSION:
         raise RuntimeError("Database schema migration did not reach expected version.")
 
@@ -312,6 +321,68 @@ def capture_source(filename, media_type, raw):
             db.rollback()
             raise
 
+
+def asset_detail(asset_id):
+    """Resolve only an explicitly imported asset; never infer relationships from filenames."""
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        row = db.execute("""SELECT i.permanent_id, o.name, o.yaml_text
+                            FROM object_identity i JOIN objects o
+                              ON o.object_id=i.legacy_id AND o.object_type=i.object_type
+                            WHERE i.permanent_id=? AND i.object_type='asset'""", (asset_id,)).fetchone()
+        if not row:
+            return None, []
+        files = db.execute("""SELECT s.source_id,s.original_name,s.media_type
+                              FROM source_link l JOIN source s ON s.source_id=l.source_id
+                              WHERE l.object_id=? ORDER BY l.created_at DESC,s.source_id""",
+                           (asset_id,)).fetchall()
+        return {"id":row[0],"name":row[1],"data":yaml.safe_load(row[2])}, files
+
+def link_asset_source(asset_id, source_id):
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("BEGIN IMMEDIATE")
+        valid = db.execute("""SELECT 1 FROM object_identity i JOIN objects o
+                              ON o.object_id=i.legacy_id AND o.object_type=i.object_type
+                              WHERE i.permanent_id=? AND i.object_type='asset'""", (asset_id,)).fetchone()
+        exists = db.execute("SELECT 1 FROM source WHERE source_id=? AND custody_status='local_verified'", (source_id,)).fetchone()
+        if not valid or not exists:
+            raise ValueError("Unknown asset or unverified source.")
+        db.execute("INSERT OR IGNORE INTO source_link(source_id,object_id) VALUES(?,?)", (source_id,asset_id))
+        db.commit()
+
+def asset_candidates():
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        return db.execute("""SELECT i.permanent_id,o.name FROM object_identity i
+                             JOIN objects o ON o.object_id=i.legacy_id AND o.object_type=i.object_type
+                             WHERE i.object_type='asset' ORDER BY o.name""").fetchall()
+
+def source_candidates():
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        return db.execute("""SELECT source_id,original_name,media_type FROM source
+                             WHERE custody_status='local_verified' ORDER BY imported_at DESC LIMIT 200""").fetchall()
+
+def verified_source(source_id):
+    init_db()
+    with sqlite3.connect(DB_FILE) as db:
+        row = db.execute("SELECT storage_ref,media_type,original_name,sha256 FROM source WHERE source_id=? AND custody_status='local_verified'", (source_id,)).fetchone()
+    if not row:
+        return None
+    storage,media,name,digest = row
+    try:
+        file_path = Path(storage).resolve(strict=True)
+        if not file_path.is_relative_to(SOURCE_DIR.resolve(strict=True)) or not file_path.is_file():
+            return None
+        raw = file_path.read_bytes()
+        if not digest or hashlib.sha256(raw).hexdigest()!=digest:
+            return None
+        return raw,media,name
+    except OSError:
+        return None
+
 def inbox_source(inbox_id):
     init_db()
     with sqlite3.connect(DB_FILE) as db:
@@ -522,6 +593,36 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self.send_page(ui.home_page(data, len(inbox_rows()), error=error))
             return
+        if parsed.path == '/assets':
+            self.send_page(ui.assets_page(asset_candidates()))
+            return
+        if parsed.path == '/asset':
+            asset_id = parse_qs(parsed.query).get('id',[''])[0]
+            asset, files = asset_detail(asset_id)
+            self.send_page(ui.asset_page(asset, files, source_candidates()), 200 if asset else 404)
+            return
+        if parsed.path == '/source/file':
+            source_id = parse_qs(parsed.query).get('id',[''])[0]
+            if not any(row[0]==source_id for row in asset_detail(parse_qs(parsed.query).get('asset',[''])[0])[1]):
+                self.send_error(404)
+                return
+            verified = verified_source(source_id)
+            if not verified:
+                self.send_error(404)
+                return
+            raw,media,name = verified
+            allowed = {'image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'}
+            content_type = media if media in allowed else 'application/octet-stream'
+            self.send_response(200)
+            self.send_header('Content-Type',content_type)
+            self.send_header('Content-Disposition','inline' if content_type in allowed else 'attachment')
+            self.send_header('X-Content-Type-Options','nosniff')
+            self.send_header('Cache-Control','no-store')
+            self.send_header('Content-Security-Policy','sandbox')
+            self.send_header('Content-Length',str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+            return
         if parsed.path == "/inbox/file":
             inbox_id = parse_qs(parsed.query).get("id", [""])[0]
             source = inbox_source(inbox_id)
@@ -588,6 +689,41 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == '/asset/link':
+            try:
+                length = int(self.headers.get('Content-Length','0'))
+                if length < 1 or length > 4096:
+                    raise ValueError('Invalid form length.')
+                fields = parse_qs(self.rfile.read(length).decode('utf-8'))
+                asset_id = fields.get('asset_id',[''])[0]
+                link_asset_source(asset_id, fields.get('source_id',[''])[0])
+                self.send_response(303)
+                self.send_header('Location','/asset?id='+quote(asset_id,safe=''))
+                self.end_headers()
+            except ValueError as exc:
+                self.send_error(400,str(exc))
+            return
+        if path == '/asset/upload':
+            try:
+                length = int(self.headers.get('Content-Length','0'))
+                if length <= 0 or length > MAX_UPLOAD:
+                    raise ValueError('Upload is empty or larger than 5 MB.')
+                form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={'REQUEST_METHOD':'POST','CONTENT_TYPE':self.headers.get('Content-Type','')})
+                asset_id = str(form.getfirst('asset_id',''))
+                if not asset_detail(asset_id)[0]:
+                    raise ValueError('Unknown asset.')
+                item = form['source']
+                raw = item.file.read(MAX_UPLOAD+1)
+                if len(raw)>MAX_UPLOAD:
+                    raise ValueError('File is larger than 5 MB.')
+                source_id,_,_,_ = capture_source(item.filename,item.type,raw)
+                link_asset_source(asset_id,source_id)
+                self.send_response(303)
+                self.send_header('Location','/asset?id='+quote(asset_id,safe=''))
+                self.end_headers()
+            except (ValueError,KeyError) as exc:
+                self.send_error(400,str(exc))
+            return
         if path == "/inbox/dismiss":
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > 2048:

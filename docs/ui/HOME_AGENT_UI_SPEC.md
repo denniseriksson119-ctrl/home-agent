@@ -144,3 +144,7 @@ Use:
 **Discuss → prototype → test → decide → update spec/decision log → implement → verify against spec**
 
 Feature implementation should remain frozen at the current stable application baseline while the initial UI contract is being established.
+
+## Asset page: linked images and documents (first delivery)
+
+An Asset has one canonical detail page, reachable initially from **Utrustning** and later via Room/System navigation. Display a lead image and up to four thumbnails when images exist, plus a complete **Bilder & dokument** list. Images/PDFs open from verified local Source custody. Explicit manual upload or linking of an existing Source is supported without AI; source originals and names are preserved. Relationships use permanent Asset and Source IDs, not paths or filename matching. A Source may be linked to multiple assets without copying bytes. The first delivery does not infer Room/System membership or import Drive automatically.
