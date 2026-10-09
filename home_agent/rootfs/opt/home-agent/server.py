@@ -387,20 +387,24 @@ def source_candidates():
                              WHERE custody_status='local_verified' ORDER BY imported_at DESC LIMIT 200""").fetchall()
 
 def verified_source(source_id):
+    """Return verified file path and metadata without loading the file into RAM."""
     init_db()
     with sqlite3.connect(DB_FILE) as db:
         row = db.execute("SELECT storage_ref,media_type,original_name,sha256 FROM source WHERE source_id=? AND custody_status='local_verified'", (source_id,)).fetchone()
     if not row:
         return None
-    storage,media,name,digest = row
+    storage, media, name, digest = row
     try:
         file_path = Path(storage).resolve(strict=True)
         if not file_path.is_relative_to(SOURCE_DIR.resolve(strict=True)) or not file_path.is_file():
             return None
-        raw = file_path.read_bytes()
-        if not digest or hashlib.sha256(raw).hexdigest()!=digest:
+        calculated = hashlib.sha256()
+        with file_path.open("rb") as stream:
+            for block in iter(lambda: stream.read(256 * 1024), b""):
+                calculated.update(block)
+        if not digest or calculated.hexdigest() != digest:
             return None
-        return raw,media,name
+        return file_path, media, name
     except OSError:
         return None
 
@@ -631,7 +635,7 @@ class Handler(BaseHTTPRequestHandler):
             if not verified:
                 self.send_error(404)
                 return
-            raw,media,name = verified
+            file_path,media,name = verified
             allowed = {'image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'}
             content_type = media if media in allowed else 'application/octet-stream'
             self.send_response(200)
@@ -640,9 +644,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('X-Content-Type-Options','nosniff')
             self.send_header('Cache-Control','no-store')
             self.send_header('Content-Security-Policy','sandbox')
-            self.send_header('Content-Length',str(len(raw)))
+            self.send_header('Content-Length',str(file_path.stat().st_size))
             self.end_headers()
-            self.wfile.write(raw)
+            with file_path.open('rb') as stream:
+                for block in iter(lambda: stream.read(256 * 1024), b''):
+                    self.wfile.write(block)
             return
         if parsed.path == "/inbox/file":
             inbox_id = parse_qs(parsed.query).get("id", [""])[0]
