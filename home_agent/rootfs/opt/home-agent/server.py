@@ -4,6 +4,8 @@ from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import ui
 import inbox_queue
+import drive_import
+import drive_register
 import copy
 import hashlib
 import difflib
@@ -23,6 +25,8 @@ PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
 DB_SCHEMA_VERSION = 5
+DRIVE_TOKEN_FILE = Path('/data/drive_import_access_token')
+DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -320,6 +324,22 @@ def capture_source(filename, media_type, raw):
         except Exception:
             db.rollback()
             raise
+
+
+def import_drive_asset(asset_id, file_id):
+    """Import only a file proven to descend from the configured shared root."""
+    if not asset_detail(asset_id)[0]:
+        raise ValueError("Unknown asset")
+    token = DRIVE_TOKEN_FILE.read_text(encoding="utf-8").strip()
+    root_id = DRIVE_ROOT_FILE.read_text(encoding="utf-8").strip()
+    if not token or not root_id:
+        raise ValueError("Drive import account is not configured")
+    drive_import.assert_under_shared_root(file_id, root_id, token)
+    downloaded = drive_import.download_original(file_id, token, SOURCE_DIR)
+    try:
+        return drive_register.register_drive_original(DB_FILE, SOURCE_DIR, downloaded, asset_id, uuid7)
+    finally:
+        Path(downloaded["temporary_path"]).unlink(missing_ok=True)
 
 
 def asset_detail(asset_id):
@@ -689,6 +709,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == '/asset/drive-import':
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+                if length < 1 or length > 4096:
+                    raise ValueError('Invalid import form length')
+                fields = parse_qs(self.rfile.read(length).decode('utf-8'))
+                asset_id = fields.get('asset_id', [''])[0]
+                file_id = fields.get('drive_file_id', [''])[0].strip()
+                if not file_id:
+                    raise ValueError('Missing Drive file ID')
+                import_drive_asset(asset_id, file_id)
+                self.send_response(303)
+                self.send_header('Location', '/asset?id=' + quote(asset_id, safe=''))
+                self.end_headers()
+            except (ValueError, OSError, drive_import.DriveImportError) as exc:
+                self.send_error(400, str(exc))
+            return
         if path == '/asset/link':
             try:
                 length = int(self.headers.get('Content-Length','0'))
