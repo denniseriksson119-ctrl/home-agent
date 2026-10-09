@@ -37,8 +37,10 @@ def register_drive_original(db_path, source_dir, downloaded, asset_id, new_id):
                            (asset_id,)).fetchone()
         if not asset:
             raise ValueError("Unknown Asset")
-        row = db.execute("SELECT source_id FROM source WHERE sha256=? AND custody_status='local_verified'",
+        row = db.execute("SELECT source_id, custody_status FROM source WHERE sha256=?",
                          (digest.hexdigest(),)).fetchone()
+        if row and row[1] != 'local_verified':
+            raise ValueError('Matching Source is not locally verified')
         duplicate = bool(row)
         installed_path = None
         if row:
