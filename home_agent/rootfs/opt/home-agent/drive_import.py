@@ -82,3 +82,32 @@ def download_original(file_id, token, destination, max_bytes=MAX_FILE_BYTES):
         if os.path.exists(temporary):
             os.unlink(temporary)
         raise
+
+
+def assert_under_shared_root(file_id, root_id, token, max_depth=32):
+    """Fail closed unless Drive parent metadata proves membership of shared root.
+
+    Do not trust a filename, a browser-selected folder, or a supplied parent ID.
+    """
+    if not root_id or not all(c.isalnum() or c in "-_" for c in root_id):
+        raise DriveImportError("Invalid configured shared root")
+    if file_id == root_id:
+        raise DriveImportError("Shared root is not an importable file")
+    pending = [file_id]
+    seen = set()
+    for _ in range(max_depth):
+        if not pending:
+            break
+        next_pending = []
+        for current in pending:
+            if current in seen:
+                continue
+            seen.add(current)
+            info = metadata(current, token)
+            for parent in info.get("parents", []):
+                if parent == root_id:
+                    return True
+                if parent not in seen:
+                    next_pending.append(parent)
+        pending = next_pending
+    raise DriveImportError("File is not verifiably inside the configured shared folder")
