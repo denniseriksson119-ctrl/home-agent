@@ -246,6 +246,13 @@ def asset_page(asset, files, candidates):
              "<form class='upload' action='/asset/upload' method='post' enctype='multipart/form-data'>"
              "<input type='hidden' name='asset_id' value='%s'><input type='file' name='source' required>"
              "<button type='submit'>Spara och koppla</button></form></details>" % esc(asset["id"]))
+    body += ("<details class='card'><summary>+ Importera från Google Drive</summary>"
+             "<p>Importera en fil från den godkända delade mappen.</p>"
+             "<form method='post' action='/asset/drive-import'>"
+             "<input type='hidden' name='asset_id' value='%s'>"
+             "<label for='drive_file_id'>Google Drive fil-ID</label>"
+             "<input id='drive_file_id' name='drive_file_id' required autocomplete='off'>"
+             "<button type='submit'>Importera och koppla</button></form></details>" % esc(asset["id"]))
     linked = {sid for sid,_,_ in files}
     available = [(sid,name,media) for sid,name,media in candidates if sid not in linked]
     if available:
