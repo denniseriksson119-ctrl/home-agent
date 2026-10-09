@@ -113,6 +113,11 @@ def inbox_page(rows, queue_state=None):
                  "<br>IngestOccurrence: %s</div></details></div></article>" %
                  (icon, esc(filename or "Namnlös fil"), label, esc(created), esc(status_label),
                   esc(stage), esc(status), esc(channel), esc(inbox_id), esc(source_id), esc(occurrence_id)))
+        safe_id = esc(inbox_id)
+        actions = ("<div class='sectionrow'><a class='text-link' target='_blank' rel='noopener' href='/inbox/file?id=%s'>Öppna original</a>"
+                   "<form method='post' action='/inbox/dismiss' onsubmit='return confirm(&quot;Ta bort objektet från Inbox? Originalfilen bevaras.&quot;)'>"
+                   "<input type='hidden' name='id' value='%s'><button type='submit'>Ta bort från Inbox</button></form></div>" % (safe_id, safe_id))
+        body = body[:-10] + actions + "</article>"
     return shell("Inbox", body, "home")
 
 def add_page():
