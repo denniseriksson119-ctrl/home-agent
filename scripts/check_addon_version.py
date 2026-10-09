@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Require an add-on version bump when installed add-on code changes in a PR."""
+"""Require a version bump when installed add-on code changes in a pull request."""
 import argparse
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 CONFIG = "home_agent/config.yaml"
-VERSION_RE = re.compile(r'^version:\\s*["\\']?(\\d+)\\.(\\d+)\\.(\\d+)["\\']?\\s*$', re.MULTILINE)
+VERSION_RE = re.compile(r"""^version:\s*["']?(\d+)\.(\d+)\.(\d+)["']?\s*$""", re.MULTILINE)
 
 def parse_version(content):
     match = VERSION_RE.search(content)
