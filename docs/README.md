@@ -16,6 +16,10 @@ This directory contains the normative design and engineering documentation for H
 ## Legacy workflow material
 Older imported Drive-era workflow documents are historical/superseded unless an active specification explicitly references a still-valid rule. They do not override the local-first architecture, data model or processing workflow.
 
+## Developer collaboration and release checks
+- [Development workflow](development/DEVELOPMENT_WORKFLOW.md)
+- [AI developer handoff](development/AI_DEVELOPER_HANDOFF.md)
+
 ## Development flow
 **Idea → discussion/prototype → decision → spec/decision update → implementation → test against spec → PR → merge**
 

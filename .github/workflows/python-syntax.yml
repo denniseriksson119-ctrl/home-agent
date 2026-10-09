@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Check add-on version against PR base
+        if: github.event_name == 'pull_request'
+        run: python scripts/check_addon_version.py --base "${{ github.event.pull_request.base.sha }}"
       - run: python -m py_compile home_agent/rootfs/opt/home-agent/*.py
       - run: python -m unittest discover -s tests -v
