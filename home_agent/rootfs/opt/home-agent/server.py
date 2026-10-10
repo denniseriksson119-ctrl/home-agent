@@ -4,6 +4,9 @@ from urllib.parse import urlparse, parse_qs, quote
 import cgi
 import ui
 import inbox_queue
+import drive_import
+import drive_register
+import drive_auth
 import copy
 import hashlib
 import difflib
@@ -23,6 +26,8 @@ PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
 DB_SCHEMA_VERSION = 5
+DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
+DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -322,6 +327,22 @@ def capture_source(filename, media_type, raw):
             raise
 
 
+def import_drive_asset(asset_id, file_id):
+    """Import only a file proven to descend from the configured shared root."""
+    if not asset_detail(asset_id)[0]:
+        raise ValueError("Unknown asset")
+    token = drive_auth.access_token(DRIVE_AUTH_FILE)
+    root_id = DRIVE_ROOT_FILE.read_text(encoding="utf-8").strip()
+    if not token or not root_id:
+        raise ValueError("Drive import account is not configured")
+    drive_import.assert_under_shared_root(file_id, root_id, token)
+    downloaded = drive_import.download_original(file_id, token, SOURCE_DIR)
+    try:
+        return drive_register.register_drive_original(DB_FILE, SOURCE_DIR, downloaded, asset_id, uuid7)
+    finally:
+        Path(downloaded["temporary_path"]).unlink(missing_ok=True)
+
+
 def asset_detail(asset_id):
     """Resolve only an explicitly imported asset; never infer relationships from filenames."""
     init_db()
@@ -366,20 +387,24 @@ def source_candidates():
                              WHERE custody_status='local_verified' ORDER BY imported_at DESC LIMIT 200""").fetchall()
 
 def verified_source(source_id):
+    """Return verified file path and metadata without loading the file into RAM."""
     init_db()
     with sqlite3.connect(DB_FILE) as db:
         row = db.execute("SELECT storage_ref,media_type,original_name,sha256 FROM source WHERE source_id=? AND custody_status='local_verified'", (source_id,)).fetchone()
     if not row:
         return None
-    storage,media,name,digest = row
+    storage, media, name, digest = row
     try:
         file_path = Path(storage).resolve(strict=True)
         if not file_path.is_relative_to(SOURCE_DIR.resolve(strict=True)) or not file_path.is_file():
             return None
-        raw = file_path.read_bytes()
-        if not digest or hashlib.sha256(raw).hexdigest()!=digest:
+        calculated = hashlib.sha256()
+        with file_path.open("rb") as stream:
+            for block in iter(lambda: stream.read(256 * 1024), b""):
+                calculated.update(block)
+        if not digest or calculated.hexdigest() != digest:
             return None
-        return raw,media,name
+        return file_path, media, name
     except OSError:
         return None
 
@@ -610,7 +635,7 @@ class Handler(BaseHTTPRequestHandler):
             if not verified:
                 self.send_error(404)
                 return
-            raw,media,name = verified
+            file_path,media,name = verified
             allowed = {'image/jpeg','image/png','image/gif','image/webp','application/pdf','text/plain'}
             content_type = media if media in allowed else 'application/octet-stream'
             self.send_response(200)
@@ -619,9 +644,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('X-Content-Type-Options','nosniff')
             self.send_header('Cache-Control','no-store')
             self.send_header('Content-Security-Policy','sandbox')
-            self.send_header('Content-Length',str(len(raw)))
+            self.send_header('Content-Length',str(file_path.stat().st_size))
             self.end_headers()
-            self.wfile.write(raw)
+            with file_path.open('rb') as stream:
+                for block in iter(lambda: stream.read(256 * 1024), b''):
+                    self.wfile.write(block)
             return
         if parsed.path == "/inbox/file":
             inbox_id = parse_qs(parsed.query).get("id", [""])[0]
@@ -689,6 +716,23 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == '/asset/drive-import':
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+                if length < 1 or length > 4096:
+                    raise ValueError('Invalid import form length')
+                fields = parse_qs(self.rfile.read(length).decode('utf-8'))
+                asset_id = fields.get('asset_id', [''])[0]
+                file_id = fields.get('drive_file_id', [''])[0].strip()
+                if not file_id:
+                    raise ValueError('Missing Drive file ID')
+                import_drive_asset(asset_id, file_id)
+                self.send_response(303)
+                self.send_header('Location', '/asset?id=' + quote(asset_id, safe=''))
+                self.end_headers()
+            except (ValueError, OSError, drive_import.DriveImportError, drive_auth.DriveAuthError) as exc:
+                self.send_error(400, str(exc))
+            return
         if path == '/asset/link':
             try:
                 length = int(self.headers.get('Content-Length','0'))
