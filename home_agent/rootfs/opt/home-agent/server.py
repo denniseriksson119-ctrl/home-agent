@@ -25,6 +25,8 @@ DB_FILE = Path("/data/home_agent.db")
 PENDING_FILE = Path("/data/pending_change.yaml")
 SOURCE_DIR = Path("/data/sources")
 MAX_UPLOAD = 5 * 1024 * 1024
+MAX_SOURCE_UPLOAD = 25 * 1024 * 1024
+MAX_CAPTURE_REQUEST = MAX_SOURCE_UPLOAD + 1024 * 1024
 DB_SCHEMA_VERSION = 5
 DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
 DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
@@ -325,6 +327,60 @@ def capture_source(filename, media_type, raw):
         except Exception:
             db.rollback()
             raise
+
+
+
+def capture_source_stream(filename, media_type, stream):
+    """Capture a bounded upload without holding the original in Raspberry Pi RAM."""
+    SOURCE_DIR.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=".capture-", dir=str(SOURCE_DIR))
+    digest = hashlib.sha256()
+    total = 0
+    promoted = None
+    try:
+        with os.fdopen(fd, "wb") as out:
+            while True:
+                block = stream.read(256 * 1024)
+                if not block:
+                    break
+                total += len(block)
+                if total > MAX_SOURCE_UPLOAD:
+                    raise ValueError("File is larger than 25 MB.")
+                digest.update(block)
+                out.write(block)
+            if not total:
+                raise ValueError("File is empty.")
+            out.flush()
+            os.fsync(out.fileno())
+        with sqlite3.connect(DB_FILE) as db:
+            db.execute("PRAGMA foreign_keys=ON")
+            db.execute("BEGIN IMMEDIATE")
+            try:
+                row = db.execute("SELECT source_id FROM source WHERE sha256=?", (digest.hexdigest(),)).fetchone()
+                if row:
+                    source_id = row[0]
+                else:
+                    source_id = uuid7()
+                    promoted = str(SOURCE_DIR / source_id)
+                    os.replace(tmp_name, promoted)
+                    db.execute("INSERT INTO source(source_id, source_type, media_type, original_name, sha256, storage_ref, custody_status) VALUES(?,?,?,?,?,?,?)",
+                               (source_id, "file", media_type or None, filename or None, digest.hexdigest(), promoted, "local_verified"))
+                occurrence_id = uuid7()
+                inbox_item_id = uuid7()
+                db.execute("INSERT INTO ingest_occurrence(occurrence_id, source_id, channel, external_ref, cleanup_status) VALUES(?,?,?,?,?)",
+                           (occurrence_id, source_id, "home_agent_upload", filename or None, "not_required"))
+                db.execute("INSERT INTO inbox_item(inbox_item_id, source_id, occurrence_id, stage, status) VALUES(?,?,?,?,?)",
+                           (inbox_item_id, source_id, occurrence_id, "captured", "pending"))
+                db.commit()
+                return source_id, occurrence_id, inbox_item_id, bool(row)
+            except Exception:
+                db.rollback()
+                if promoted:
+                    os.unlink(promoted)
+                raise
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
 
 
 def import_drive_asset(asset_id, file_id):
@@ -812,14 +868,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/capture":
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if length <= 0 or length > MAX_UPLOAD:
-                    raise ValueError("Upload is empty or larger than 5 MB.")
+                if length <= 0 or length > MAX_CAPTURE_REQUEST:
+                    raise ValueError("Upload is empty or larger than 26 MB.")
                 form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": self.headers.get("Content-Type", "")})
                 item = form["source"]
-                raw = item.file.read(MAX_UPLOAD + 1)
-                if len(raw) > MAX_UPLOAD:
-                    raise ValueError("File is larger than 5 MB.")
-                source_id, occurrence_id, inbox_item_id, duplicate = capture_source(item.filename, item.type, raw)
+                source_id, occurrence_id, inbox_item_id, duplicate = capture_source_stream(item.filename, item.type, item.file)
                 data, error = load_home()
                 notice = "Saved to Inbox locally." + (" Exact source already existed; new ingest occurrence recorded." if duplicate else "")
                 self.send_page(ui.home_page(data, len(inbox_rows()), notice=notice, error=error))
