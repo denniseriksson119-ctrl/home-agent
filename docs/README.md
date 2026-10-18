@@ -27,3 +27,5 @@ Experimental implementation does not automatically become product policy.
 
 ## Current implementation plan
 - **0.7 — Permanent local data foundation** — `implementation/0.7_PLAN.md`
+- **ChatGPT Plus → NIBE read probe (local prototype; live verification pending)** — `architecture/CHATGPT_NIBE_READ_PROBE.md`
+
