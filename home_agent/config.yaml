@@ -1,5 +1,5 @@
 name: Home Agent
-version: "0.8.4"
+version: "0.8.5"
 slug: home_agent
 description: Local Home Agent service for Home Assistant
 url: https://github.com/denniseriksson119-ctrl/home-agent
@@ -16,3 +16,4 @@ ports:
 ports_description:
   8099/tcp: Home Agent web interface
 webui: http://[HOST]:[PORT:8099]
+

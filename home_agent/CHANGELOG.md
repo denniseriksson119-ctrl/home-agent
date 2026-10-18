@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+
+- Add a disabled-by-default, authenticated read endpoint for one existing NIBE asset and explicitly linked Source metadata.
+- Add a locally tested ChatGPT MCP relay prototype. Live Pi connectivity and plugin publication remain separate verification steps.
+- No AI API calls, source downloads, database writes, schema migration or Drive changes are added by the read endpoint.
+
 ## 0.7.0d1
 
 - Room-note snapshot persistence and audit logging now commit atomically in one SQLite transaction.
@@ -10,3 +16,4 @@
 - First asset resource view with image preview and linked documents.
 - Explicit local Source-to-Asset links and contextual file upload/reuse.
 - Database schema v5; original bytes remain unchanged.
+

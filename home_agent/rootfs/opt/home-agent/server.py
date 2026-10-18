@@ -7,6 +7,7 @@ import inbox_queue
 import drive_import
 import drive_register
 import drive_auth
+import chatgpt_read
 import copy
 import hashlib
 import difflib
@@ -656,6 +657,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == chatgpt_read.PATH:
+            chatgpt_read.handle_get(self, DB_FILE)
+            return
         if parsed.path in ("/", "/inbox", "/rooms", "/add", "/todo", "/search", "/more"):
             if parsed.path == "/inbox":
                 self.send_page(ui.inbox_page(inbox_rows(), inbox_queue.state(DB_FILE)))
@@ -919,3 +923,4 @@ if __name__ == "__main__":
     bootstrap_database()
     inbox_queue.launch(DB_FILE, SOURCE_DIR)
     HTTPServer((HOST, PORT), Handler).serve_forever()
+
