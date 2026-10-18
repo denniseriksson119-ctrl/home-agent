@@ -168,6 +168,7 @@ def more_page(export_status=None):
         body += "<p>Inte anslutet. En separat Drive-anslutning behövs för automatisk publicering.</p>"
     if export_status.get("error"):
         body += "<p>%s</p>" % esc(export_status["error"])
+    body += "<p><a href='/drive/connect'>Anslut Google Drive</a></p>"
     body += "<p class='sub'>Drive innehåller en läskopia. Kontrollera tidstämpeln innan analys.</p></div>"
     body += "<details class='card'><summary>Importera YAML (avancerat)</summary>"
     body += ("<form method='post' action='/import' enctype='multipart/form-data'>"
@@ -175,6 +176,43 @@ def more_page(export_status=None):
              "<button type='submit'>Importera</button></form></details>")
     body += "<p class='foot'>Home Agent · Lokal lagring</p>"
     return shell("Mer", body, "more")
+
+
+def google_connection_page(status, csrf):
+    phase = status.get("phase", "error")
+    body = "<a href='/more'>← Mer</a><h1>Anslut Google Drive</h1>"
+    body += "<p>Ge Pi tillåtelse att publicera husindex och kopplade dokument i en separat Drive-mapp.</p>"
+    if status.get("email"):
+        body += "<p>Google-konto: <strong>%s</strong></p>" % esc(status["email"])
+    if status.get("message"):
+        body += "<div class='card'>%s</div>" % esc(status["message"])
+    if phase == "setup":
+        body += ("<div class='card'><h2>Engångsinställning</h2><p>Skapa en Google-klient av typen "
+                 "<strong>TVs and Limited Input devices</strong> i Google Cloud. "
+                 "Fyll sedan i klient-ID, klienthemlighet och ditt Google-konto under "
+                 "<strong>Home Assistant → Home Agent → Konfiguration → Google Drive</strong> "
+                 "och starta om Home Agent.</p>"
+                 "<p><a href='https://console.cloud.google.com/auth/clients' target='_blank' rel='noopener noreferrer'>Öppna Google Cloud</a></p></div>")
+    elif phase in ("requesting", "waiting"):
+        body += "<meta http-equiv='refresh' content='3'>"
+        if phase == "requesting":
+            body += "<p>Hämtar en inloggningskod från Google …</p>"
+        else:
+            body += ("<div class='card'><h2>Godkänn på Google</h2><p>Öppna länken och skriv in denna kod:</p>"
+                     "<p style='font-size:1.35rem;overflow-wrap:anywhere;user-select:all'><code>%s</code></p>"
+                     "<p><a href='%s' target='_blank' rel='noopener noreferrer'>Öppna Google och godkänn</a></p>"
+                     "<p>Kom sedan tillbaka hit. Pi kontrollerar godkännandet automatiskt.</p></div>" %
+                     (esc(status["user_code"]), esc(status["verification_url"])))
+        body += ("<form method='post' action='/drive/connect/cancel'><input type='hidden' name='csrf' value='%s'>"
+                 "<button type='submit'>Avbryt inloggningen</button></form>" % esc(csrf))
+    else:
+        if status.get("connected"):
+            body += "<p>En Google-behörighet är sparad. Se senaste publicering under Mer.</p>"
+        label = "Anslut på nytt" if status.get("connected") else "Anslut Google Drive"
+        body += ("<form method='post' action='/drive/connect/start'><input type='hidden' name='csrf' value='%s'>"
+                 "<button type='submit'>%s</button></form>" % (esc(csrf), label))
+    body += "<p class='sub'>Din Google-inloggning sker hos Google. Behörigheten sparas lokalt på Pi.</p>"
+    return shell("Anslut Google Drive", body, "more")
 
 def room_detail_page(room_id, floor, room, sections, history):
     """Render already-resolved explicit relationships, never infer room links."""

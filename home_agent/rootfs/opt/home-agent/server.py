@@ -8,6 +8,7 @@ import drive_import
 import drive_register
 import drive_auth
 import chatgpt_export
+import google_device
 import copy
 import hashlib
 import difflib
@@ -31,6 +32,7 @@ MAX_CAPTURE_REQUEST = MAX_SOURCE_UPLOAD + 1024 * 1024
 DB_SCHEMA_VERSION = 5
 DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
 DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
+GOOGLE_DEVICE = google_device.Controller()
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -657,6 +659,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/drive/connect":
+            google_device.handle_get(self, GOOGLE_DEVICE)
+            return
         if parsed.path in ("/", "/inbox", "/rooms", "/add", "/todo", "/search", "/more"):
             if parsed.path == "/inbox":
                 self.send_page(ui.inbox_page(inbox_rows(), inbox_queue.state(DB_FILE)))
@@ -773,6 +778,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path in ("/drive/connect/start", "/drive/connect/cancel"):
+            google_device.handle_post(self, GOOGLE_DEVICE, path)
+            return
         if path == '/asset/drive-import':
             try:
                 length = int(self.headers.get('Content-Length', '0'))
@@ -920,8 +928,10 @@ if __name__ == "__main__":
     bootstrap_database()
     inbox_queue.launch(DB_FILE, SOURCE_DIR)
     export_stop = chatgpt_export.launch(DB_FILE, SOURCE_DIR)
+    google_stop = GOOGLE_DEVICE.launch()
     try:
         HTTPServer((HOST, PORT), Handler).serve_forever()
     finally:
         export_stop.set()
+        google_stop.set()
 

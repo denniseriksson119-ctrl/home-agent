@@ -16,6 +16,11 @@ CONFIG = Path("/data/chatgpt_drive_oauth.json")
 STATE = Path("/data/chatgpt_drive_state.json")
 INTERVAL = 15 * 60
 PURPOSE = "home-agent-chatgpt-read"
+WAKE = threading.Event()
+
+
+def request_publish():
+    WAKE.set()
 
 
 def private_json(path):
@@ -39,6 +44,11 @@ def save_state(path, state):
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temp, path)
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
     finally:
         temp.unlink(missing_ok=True)
 
@@ -137,11 +147,16 @@ def status(config_path=CONFIG, state_path=STATE):
 
 def run(db_path, source_dir, stop):
     while not stop.is_set():
+        WAKE.clear()
         try:
             publish_once(db_path, source_dir)
         except Exception:
             print("Home Agent: ChatGPT-publicering misslyckades; nytt försök om 15 minuter.", flush=True)
-        stop.wait(INTERVAL)
+        for _ in range(INTERVAL):
+            if stop.wait(1):
+                return
+            if WAKE.is_set():
+                break
 
 
 def launch(db_path, source_dir):
