@@ -188,3 +188,9 @@ Captured, dedupe-checked, parsed, analyzed, review/proposal, registered, archive
 **Status:** Accepted
 
 Start with one canonical Asset detail page displaying a lead image, thumbnails and a complete **Bilder & dokument** section. Files are immutable Sources with explicit permanent-ID links, not copies in semantic folders. Contextual manual upload and reuse of existing Sources are supported. Room/System navigation can link to the same Asset page later. Legacy Drive paths are provenance, not the storage model.
+
+## DD-041 — Automatic Drive read model for initial ChatGPT Plus use
+**Status:** Accepted by owner, 2026-10-18; deployed acceptance pending
+
+Home Agent may publish bounded, source-aware reading packages automatically to a separate app-managed private Drive exchange folder. Pi remains the operational source of truth. ChatGPT uses the user's existing Drive connection to navigate a small house index and choose relevant published context; this is a derived export and does not require a model API or incoming Pi connection. Initial detail scope is the existing NIBE Asset, explicitly linked originals and supported explicit service/maintenance references. Unknown links remain unknown. Publish sources/context before updating the stable index; include revision/time and never silently treat stale or unpublished data as current. No proposal import, domain writes, archival cleanup or automatic retention is authorized by this reading path. Setup and acceptance are specified in `architecture/CHATGPT_DRIVE_READ_MODEL.md`.
+

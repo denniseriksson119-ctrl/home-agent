@@ -3,6 +3,7 @@
 Requires a Google Cloud OAuth Desktop client. Opens a local loopback callback,
 verifies state and PKCE, then writes a 0600 configuration file. Never prints tokens.
 Run with: python3 drive_oauth_setup.py CLIENT_ID CLIENT_SECRET EXPECTED_EMAIL
+Use --chatgpt-export for a SEPARATE app-created-file publishing authorization.
 """
 import base64
 import hashlib
@@ -18,9 +19,10 @@ from urllib.parse import urlencode, urlparse, parse_qs
 from urllib.request import Request, urlopen
 
 SCOPES = "openid email https://www.googleapis.com/auth/drive.readonly"
+EXPORT_SCOPES = "openid email https://www.googleapis.com/auth/drive.file"
 
 
-def setup(client_id, client_secret, expected_email, output):
+def setup(client_id, client_secret, expected_email, output, export=False):
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     state = secrets.token_urlsafe(32)
@@ -51,9 +53,11 @@ def setup(client_id, client_secret, expected_email, output):
     redirect = "http://127.0.0.1:%d/callback" % server.server_port
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
         "client_id": client_id, "redirect_uri": redirect, "response_type": "code",
-        "scope": SCOPES, "access_type": "offline", "prompt": "consent select_account",
+        "scope": EXPORT_SCOPES if export else SCOPES, "access_type": "offline", "prompt": "consent select_account",
         "code_challenge": challenge, "code_challenge_method": "S256", "state": state})
-    print("Opening Google authorization in your browser. Sign in ONLY with the dedicated import account.")
+    print("Opening Google authorization. Use the account matching EXPECTED_EMAIL.")
+    if export:
+        print("This creates a SEPARATE publishing connection for Home Agent-managed Drive files.")
     webbrowser.open(url)
     server.timeout = 1
     for _ in range(180):
@@ -78,15 +82,25 @@ def setup(client_id, client_secret, expected_email, output):
         raise RuntimeError("Wrong Google account: credentials NOT saved")
     config = {"client_id": client_id, "client_secret": client_secret,
               "refresh_token": tokens["refresh_token"], "expected_email": expected_email}
+    if export:
+        config.update(purpose="home-agent-chatgpt-read", enabled=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     fd = os.open(output, flags, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as stream:
         json.dump(config, stream)
     print("Credentials saved with mode 0600 to", output)
-    print("Transfer securely to /data/drive_import_oauth.json on the Pi; never share in chat.")
+    target = "/data/chatgpt_drive_oauth.json" if export else "/data/drive_import_oauth.json"
+    print("Transfer securely to", target, "on the Pi; never share in chat.")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        raise SystemExit("Usage: python3 drive_oauth_setup.py CLIENT_ID CLIENT_SECRET EXPECTED_EMAIL")
-    setup(sys.argv[1], sys.argv[2], sys.argv[3], Path("drive_import_oauth.json"))
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("client_id")
+    parser.add_argument("client_secret")
+    parser.add_argument("expected_email")
+    parser.add_argument("--chatgpt-export", action="store_true")
+    args = parser.parse_args()
+    output = Path("chatgpt_drive_oauth.json" if args.chatgpt_export else "drive_import_oauth.json")
+    setup(args.client_id, args.client_secret, args.expected_email, output, export=args.chatgpt_export)
+

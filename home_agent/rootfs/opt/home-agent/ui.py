@@ -1,5 +1,6 @@
 """Mobile-first presentation only. Domain operations stay in server.py."""
 import html
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 def esc(value):
@@ -143,11 +144,31 @@ def search_page():
     return shell("Sök", "<h1>Sök</h1><p class='sub'>Sökning kopplas till verkliga data senare.</p>"
                  "<div class='card empty'>Sökfunktionen är inte aktiv ännu.</div>", "search")
 
-def more_page():
+def more_page(export_status=None):
     body = "<h1>Mer</h1><p class='sub'>Fler vyer och verktyg.</p>"
     body += card_link("/rooms", "🏠", "Rum och utrymmen", "Visa alla rum")
     body += card_link("/assets", "🔧", "Utrustning", "Visa utrustningssidor")
     body += card_link("/inbox", "📥", "Inbox", "Visa sparade filer")
+    export_status = export_status or {}
+    body += "<div class='card'><h2>ChatGPT via Drive</h2>"
+    if export_status.get("enabled"):
+        body += "<p>Läsunderlaget kontrolleras automatiskt var 15:e minut.</p>"
+        if export_status.get("last_success"):
+            stamp = export_status["last_success"]
+            try:
+                stamp = datetime.fromisoformat(stamp).astimezone(timezone.utc).strftime("%d/%m %Y kl. %H:%M UTC")
+            except (ValueError, TypeError):
+                pass
+            body += "<p>Senast publicerat: %s</p>" % esc(stamp)
+        else:
+            body += "<p>Väntar på första publiceringen.</p>"
+        if export_status.get("index_url"):
+            body += "<p><a href='%s' target='_blank' rel='noopener noreferrer'>Öppna husindex i Drive</a></p>" % esc(export_status["index_url"])
+    else:
+        body += "<p>Inte anslutet. En separat Drive-anslutning behövs för automatisk publicering.</p>"
+    if export_status.get("error"):
+        body += "<p>%s</p>" % esc(export_status["error"])
+    body += "<p class='sub'>Drive innehåller en läskopia. Kontrollera tidstämpeln innan analys.</p></div>"
     body += "<details class='card'><summary>Importera YAML (avancerat)</summary>"
     body += ("<form method='post' action='/import' enctype='multipart/form-data'>"
              "<input type='file' name='snapshot' accept='.yaml,.yml,text/yaml,application/x-yaml' required>"
@@ -264,3 +285,4 @@ def asset_page(asset, files, candidates):
         body += "</select><button type='submit'>Koppla fil</button></form></details>"
     body += "<details class='card technical'><summary>Tekniska detaljer</summary><pre>%s</pre></details>" % esc(__import__("yaml").safe_dump(asset["data"],allow_unicode=True,sort_keys=False))
     return shell(asset["name"] or "Utrustning",body)
+
