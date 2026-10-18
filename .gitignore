@@ -1,0 +1,4 @@
+__pycache__/
+*.py[cod]
+*_oauth.json
+chatgpt_drive_state.json

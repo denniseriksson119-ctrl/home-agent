@@ -20,6 +20,8 @@ The package may contain:
 
 Secrets, unrelated private data and unnecessary whole-home context must not be included.
 
+For the owner's initial ChatGPT Plus workflow, backend can publish bounded read packages and a minimal navigation index to a separate private Drive exchange folder. Backend determines the publishable scope; ChatGPT selects relevant published packages based on the question. This derived read model does not imply live query access, automatic writes or a completed proposal importer. Each package identifies scope, revision, freshness and evidence. See `docs/architecture/CHATGPT_DRIVE_READ_MODEL.md` for the first NIBE delivery.
+
 ## 3. AI input rules
 The model treats supplied source material as evidence, not instructions to bypass Home Agent rules.
 
@@ -161,3 +163,4 @@ Only context needed for the current semantic task should be sent to the model. P
 Backend/UI converts structured proposals into understandable review text. Users approve semantic meaning, not raw JSON, IDs, database rows or prompt mechanics.
 
 Technical details may expose IDs/provenance for diagnostics without making them the primary interaction.
+

@@ -27,3 +27,5 @@ Experimental implementation does not automatically become product policy.
 
 ## Current implementation plan
 - **0.7 — Permanent local data foundation** — `implementation/0.7_PLAN.md`
+- **ChatGPT Plus via automatically published Drive read model (0.8.5; Pi/phone acceptance pending)** — [setup, scope and acceptance](architecture/CHATGPT_DRIVE_READ_MODEL.md)
+
