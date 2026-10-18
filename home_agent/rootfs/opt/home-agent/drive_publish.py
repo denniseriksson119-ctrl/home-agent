@@ -62,7 +62,7 @@ class DrivePublisher:
 
     def ensure(self, key, name, parent=None, body=None, mime="text/plain", mutable=False):
         """Persist a generated ID *before* create, making ambiguous retries safe."""
-        if not re.fullmatch(r"[a-z0-9-]{1,180}", key):
+        if not re.fullmatch(r"[a-z0-9-]{1,110}", key):
             raise PublishError("Ogiltig publiceringsnyckel")
         if parent:
             file_url(parent)

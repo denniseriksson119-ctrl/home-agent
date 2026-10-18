@@ -64,6 +64,8 @@ class FakeDrive:
         else:
             meta = json.loads(data)
         key = meta["appProperties"]["ha_key"]
+        if any(len((k + v).encode()) > 124 for k, v in meta["appProperties"].items()):
+            raise AssertionError("Drive appProperties exceed the documented 124-byte limit")
         if key == self.fail_key:
             raise drive_publish.PublishError("Synthetic failure")
         if method == "POST":

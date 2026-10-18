@@ -84,7 +84,8 @@ def publish_once(db_path, source_dir, config_path=CONFIG, state_path=STATE):
             name = str(source["name"] or "original").replace("\r", " ").replace("\n", " ")[:180]
             mime = source["media_type"] if source["media_type"] in (
                 "application/pdf", "image/jpeg", "image/png", "image/webp", "text/plain") else "application/octet-stream"
-            fid = drive.ensure("source-" + hashlib.sha256(source["id"].encode()).hexdigest() + "-" + source["sha256"],
+            source_key = hashlib.sha256((source["id"] + "\0" + source["sha256"]).encode()).hexdigest()
+            fid = drive.ensure("source-" + source_key,
                                name, originals, body, mime)
             links[source["id"]] = file_url(fid)
             del body
