@@ -48,6 +48,8 @@ Gamla revisioner och källkopior raderas inte automatiskt. De kan vara sökbara 
 
 ## Engångsanslutning (på ägarens dator)
 
+**Från 0.8.6:** Den rekommenderade vägen för telefonanvändning finns i [Google Drive från telefonen](GOOGLE_DRIVE_MOBILE_CONNECT.md). Klientuppgifter anges i Home Assistants konfiguration och Pi genomför enhetsinloggningen. Skriptvägen nedan finns kvar som äldre alternativ för separata installationer.
+
 Detta steg är separat från ChatGPTs Drive-plugin och från Home Agents befintliga read-only-import. ChatGPTs anslutning ger inte automatiskt Pi en Google-token.
 
 1. Använd ett **separat Google OAuth Desktop-klient-ID** för publicering. Aktivera Drive API och lägg till rätt testanvändare om OAuth-projektet är i testläge. Behörighet är `openid email https://www.googleapis.com/auth/drive.file`, inte full åtkomst till alla Drive-filer. Google kan begränsa refresh-token-livslängden för appar i testläge; återauktorisering kan behövas tills OAuth-konfigurationen är stabil.

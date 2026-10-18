@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.6
+
+- Connect Google Drive from a phone using Google's device authorization flow: Pi requests/polls, the user enters a code and approves at Google.
+- Separate client ID, client secret and expected account in Home Assistant configuration. No terminal, desktop script or manual token-file transfer for this setup path.
+- Account/scope validation, expiring/cancellable persisted attempts, safe retries/restart and local Origin/Host/CSRF checks. Credentials stay on Pi; existing manual connections remain supported.
+- Successful connection wakes the existing Drive publisher immediately. Real Google/Pi/phone acceptance still required.
+
 ## 0.8.5
 
 - Opt-in automatic publication of a small house index, selected NIBE facts, explicit service/maintenance references and SHA-256-checked linked originals to a separate private Drive folder.
