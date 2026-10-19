@@ -199,3 +199,15 @@ Home Agent may publish bounded, source-aware reading packages automatically to a
 
 A headless Pi uses Google's device authorization flow with openid, email and drive.file. The user approves on a phone. OAuth client credentials belong in Home Assistant add-on configuration; user-facing Home Agent only displays the active Google user code/link. Verify granted scopes and expected Google account before atomically saving credentials, preserve existing credentials on failure, and wake the existing publisher after success. Backend owns expiring/cancellable attempt state and polling/backoff; GET never initiates authorization. Local Host, Origin and CSRF checks protect the new UI operations. Existing manual credentials remain supported; changing a stored client/account is a separate migration. See `architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md`.
 
+
+## DD-043 — Existing shared Drive root and separate account ownership
+
+**Status:** Account/storage principle confirmed by owner, 2026-10-19; implementation adaptation and transfer work backlogged.
+
+The primary Google account owns the existing Home Agent root and paid storage. Only that folder is shared with the separate Home Agent account used by Pi and ChatGPT; Google One storage is not shared. Reuse this root and verified originals rather than creating another independent root on the secondary account. Pi remains operational source of truth; reading copies, source archive and recoverable backups remain distinct.
+
+A file uploaded by the secondary account is normally owned by that account even within the shared folder. The target is primary-account ownership of persistent originals/backups, with batch transfer of existing files and recurring transfer of new files. Between private accounts this needs a request from the current owner and acceptance authenticated as the recipient. A separately authorized scheduled Apps Script is a proposed recipient, not an implemented feature. Keep primary-account credentials off Pi.
+
+This refines DD-041's exchange-folder placement: any new managed reading subtree belongs under the existing approved root. The 0.8.5/0.8.6 exporter still creates an independent app-owned root and does not implement this policy. Account-level folder sharing does not itself authorize the OAuth app with drive.file; a supported file/folder authorization route must be proven before resuming setup. DD-042 remains a description of the delivered device flow, not proof that it can access this pre-existing root.
+
+See [account/storage policy](../architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) and [BL-DRIVE-001–004](../development/BACKLOG.md). Recording this backlog does not authorize automatic ownership changes, cleanup, production scripting or new runtime implementation.

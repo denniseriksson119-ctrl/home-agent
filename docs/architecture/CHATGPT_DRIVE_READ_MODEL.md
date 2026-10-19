@@ -4,6 +4,14 @@
 **Version:** Add-on 0.8.5. Ingen databasändring.
 **Status:** Implementerat för kodgranskning. Riktig OAuth, Pi-publicering och läsning i telefonens ChatGPT måste verifieras efter installation.
 
+
+## Förtydligande 2026-10-19 — befintlig delad mapp
+
+Ägaren använder ett huvudkonto med befintligt lagringsabonnemang och en befintlig Home Agent-mapp som delas med det separata Home Agent-/ChatGPT-kontot. Endast mappen är delad, inte Google One-lagringen. Se [kontoprincipen](GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) och [backlog](../development/BACKLOG.md).
+
+**Nuvarande implementation skapar en separat appmapp på det autentiserade kontot. Den är ännu inte anpassad till den befintliga delade roten.** Stegen nedan beskriver den levererade implementationen, inte en färdig lösning för denna installation. Nästa leverans ska först verifiera appauktorisering och publicering till rätt rot (BL-DRIVE-001); därefter återupptas Google-/Pi-/ChatGPT-provet. Enbart mapp-ID eller kontots delningsrätt löser inte appåtkomst med `drive.file`. Ägaröverföring och återställningsbar backup ingår inte i 0.8.6.
+
+
 ## Syfte och ansvar
 
 Pi publicerar ett litet navigerbart läsunderlag automatiskt. Användaren ställer sin fråga i vanliga ChatGPT med befintlig Drive-anslutning. ChatGPT väljer relevanta publicerade uppgifter och öppnar källor utifrån frågan. Home Agent behöver därför inte gissa varje framtida fråga eller köra en språkmodell på Pi.
