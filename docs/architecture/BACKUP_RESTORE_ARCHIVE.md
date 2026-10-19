@@ -11,6 +11,15 @@ Local Home Agent storage is the operational source of truth and holds the databa
 
 Google Drive is for permanent original-source archive when applicable, off-device backups, logical exports/snapshots and optional Inbox ingestion. Drive is not the runtime database. GitHub contains code/specs only, never private house backups or secrets.
 
+## Drive accounts and storage ownership
+The primary account owns the existing shared Home Agent root and provides the paid storage. Pi and ChatGPT use a separate Home Agent account with access only to that shared subtree; Google One storage itself is not shared.
+
+New files uploaded by the Home Agent account normally consume that account's quota even inside the primary-owned folder. The target is primary-account ownership of permanent originals and backups through an explicit, verified transfer. Folder ownership alone does not transfer its contents.
+
+The accepted account policy, OAuth boundary, proposed two-account transfer mechanism and current implementation gaps are specified in [Drive accounts and storage](GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md). Batch transfer and recurring transfer are tracked separately in [BL-DRIVE-002/003](../development/BACKLOG.md); neither is implemented by 0.8.6.
+
+Track upload/integrity verification independently from pending/completed ownership transfer. A completed ownership transfer is not proof of recoverability, and a verified upload must not be reported as completed primary-account ownership. Until acceptance, the uploader needs storage capacity. No primary-account credentials belong on Pi.
+
 ## Artifact classes
 **Operational backup** restores Home Agent operation and preserves permanent IDs, relations, processing state and required history.
 

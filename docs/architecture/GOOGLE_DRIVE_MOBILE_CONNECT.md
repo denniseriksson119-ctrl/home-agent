@@ -7,6 +7,14 @@ Pi använder Googles enhetsflöde för en installation utan egen webbläsare. An
 
 Den automatiska läspubliceringen från 0.8.5, lokala original, databas, permanenta ID:n och Inbox fungerar som tidigare. Detta är en anslutningsfunktion, inte modell-API-integration eller import av AI-förslag. Anslutning i ChatGPTs Drive-plugin ger inte Pi denna behörighet.
 
+
+## Förtydligande 2026-10-19 — befintlig delad mapp
+
+Ägaren använder ett huvudkonto med befintligt lagringsabonnemang och en befintlig Home Agent-mapp som delas med det separata Home Agent-/ChatGPT-kontot. Endast mappen är delad, inte Google One-lagringen. Se [kontoprincipen](GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) och [backlog](../development/BACKLOG.md).
+
+**Nuvarande implementation skapar en separat appmapp på det autentiserade kontot. Den är ännu inte anpassad till den befintliga delade roten.** Stegen nedan beskriver den levererade implementationen, inte en färdig lösning för denna installation. Nästa leverans ska först verifiera appauktorisering och publicering till rätt rot (BL-DRIVE-001); därefter återupptas Google-/Pi-/ChatGPT-provet. Enbart mapp-ID eller kontots delningsrätt löser inte appåtkomst med `drive.file`. Ägaröverföring och återställningsbar backup ingår inte i 0.8.6.
+
+
 ## Engångsinställning hos Google
 
 Gör detta med kontot vars Drive ChatGPT ska läsa. På en telefon kan Cloud Console behöva webbläsarens datorvy för att visa alla fält.

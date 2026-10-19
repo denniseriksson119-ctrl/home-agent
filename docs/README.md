@@ -30,3 +30,7 @@ Experimental implementation does not automatically become product policy.
 - **ChatGPT Plus via automatically published Drive read model (0.8.5; Pi/phone acceptance pending)** — [setup, scope and acceptance](architecture/CHATGPT_DRIVE_READ_MODEL.md)
 - **Google Drive connection from a phone (0.8.6; real Google acceptance pending)** — [mobile setup and security boundary](architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md)
 
+
+## Active backlog and Drive account policy
+- [Drive/ChatGPT backlog and next acceptance steps](development/BACKLOG.md)
+- [Existing shared Drive folder, account boundary and storage ownership](architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) — owner clarification 2026-10-19; current exporter still needs adaptation.
