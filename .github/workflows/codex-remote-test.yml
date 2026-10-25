@@ -1,0 +1,49 @@
+name: Codex Remote Test
+on:
+  pull_request:
+    paths: ['codex_remote_test/**', 'tests/test_codex_remote_test.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+  push:
+    branches: [main]
+    paths: ['codex_remote_test/**', 'tests/test_codex_remote_test.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'PyYAML>=6,<7'
+      - if: github.event_name == 'pull_request'
+        run: python scripts/check_codex_test_version.py --base "${{ github.event.pull_request.base.sha }}"
+      - run: python -m py_compile codex_remote_test/app/*.py
+      - run: python -m unittest discover -s tests -p 'test_codex_remote_test.py' -v
+  container:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag codex-remote-test:ci ./codex_remote_test
+      - name: Start isolated container without network or account
+        run: |
+          docker volume create codex-test-data
+          docker run --detach --name codex-test --network none --mount source=codex-test-data,target=/data codex-remote-test:ci
+      - name: Real CLI, web and persistence smoke test
+        run: |
+          docker exec codex-test python3 /app/smoke.py
+          docker restart codex-test
+          docker exec codex-test python3 /app/smoke.py --after-restart
+      - name: Stop and remove synthetic test data
+        if: always()
+        run: |
+          docker rm --force codex-test || true
+          docker volume rm codex-test-data || true

@@ -62,3 +62,15 @@ Acceptans:
 ## Därefter — strukturerad retur av AI-förslag
 
 Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedda förslag via befintlig Inbox, med validering, semantisk granskning, godkännande och lokal commit. Detta är separat från läspublicering och finns inte som färdig AI-import i 0.8.6.
+
+## BL-CODEX-001 — Codex session on Pi from the ChatGPT mobile app
+
+**Priority:** Isolated connection experiment requested by owner. **Status:** Test add-on implemented for review; real acceptance pending.
+
+- Separate Codex Remote Test 0.1.0, pinned CLI 0.164.0, Ingress setup and synthetic workspace.
+- Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account.
+- Owner acceptance: install on Home Assistant OS, complete ChatGPT device login, actually pair Android, read the test marker, create a synthetic note and resume the same conversation after add-on restart.
+- If the Android UI lacks manual code entry or the service requires a desktop host, the direct connection remains unverified/blocked. A generated code alone is not acceptance.
+- No production Home Agent data access or AI-import integration is authorized by this test. No dependency on the unfinished Drive workstream.
+
+See [DD-044](../decisions/DECISIONS.md) and [phone installation/test guide](../../codex_remote_test/DOCS.md).
