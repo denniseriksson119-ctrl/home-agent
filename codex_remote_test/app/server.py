@@ -56,7 +56,7 @@ class Handler(BaseHTTPRequestHandler):
         if (not self.allowed() or self.path != '/api/action'
                 or self.headers.get('Content-Type') != 'application/json'
                 or self.headers.get('Sec-Fetch-Site') == 'cross-site'
-                or not hmac.compare_digest(self.headers.get('X-CSRF-Token', ''), self.controller.csrf)):
+                or not hmac.compare_digest(self.headers.get('X-CSRF-Token', '').encode(), self.controller.csrf.encode())):
             self.reply(403, {'error': 'Åtgärden måste startas från tilläggets sida.'})
             return
         try:

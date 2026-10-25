@@ -252,7 +252,7 @@ class HTTPTests(unittest.TestCase):
             reply.do_GET()
             self.assertIsNone(self.controller.job)
             self.assertIsNone(self.controller.remote)
-        for headers in ({'X-CSRF-Token': 'wrong'}, {'Content-Type': 'text/plain'},
+        for headers in ({'X-CSRF-Token': 'wrong'}, {'X-CSRF-Token': 'ogiltig-åäö'}, {'Content-Type': 'text/plain'},
                         {'Sec-Fetch-Site': 'cross-site'}):
             reply = Reply(self.controller, '/api/action', body={'action': 'start'}, **headers)
             reply.do_POST()
