@@ -65,7 +65,7 @@ Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedd
 
 ## BL-CODEX-001 — Codex session on Pi from the ChatGPT mobile app
 
-**Priority:** Isolated connection experiment requested by owner. **Status:** Test add-on implemented for review; real acceptance pending.
+**Priority:** Isolated connection experiment requested by owner. **Status:** 0.1.0 merged; owner's Pi build failed with an Alpine shell/apt mismatch. 0.1.1 fixes the base selection; real Pi/mobile acceptance pending.
 
 - Separate Codex Remote Test 0.1.0, pinned CLI 0.164.0, Ingress setup and synthetic workspace.
 - Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account.

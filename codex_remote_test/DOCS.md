@@ -15,13 +15,25 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det nya separata tillägget **Codex Remote Test**, version **0.1.0**, och installera.
+4. Leta efter det nya separata tillägget **Codex Remote Test**, version **0.1.1**, och installera.
    Detta är en ny app, inte en uppdatering av Home Agent 0.8.6.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
 
 Första installationen bygger en container och kan ta tid på Pi. Vid byggfel behövs
 byggloggen från detta tillägg, inte Home Assistant Core-loggen. Dela inte inloggningskoder, parkoder eller privata backupfiler i felrapporter.
+
+### Om installationen av 0.1.0 misslyckades
+
+Version 0.1.1 använder en uttrycklig Debian/Node-bas som inte kan bytas genom
+Supervisors `BUILD_FROM`-argument. 0.1.0 kunde byggas mot en Alpine-bas i ägarens
+installation; då kördes `apt-get` med `/bin/ash` och bygget stoppade med exitkod 127.
+CI provar nu ett avsiktligt motstridigt Alpine-argument på både ARM64 och amd64
+och kontrollerar att den färdiga imagen ändå innehåller Debian, apt och Node.
+
+Efter merge: uppdatera tilläggsbutiken, kontrollera att **0.1.1** visas och försök
+installera igen. Om tillägget redan är installerat väljer du uppdatering till
+0.1.1. Ingen ominstallation av Home Assistant eller ändring av Home Agent behövs.
 
 ## 1. Logga in
 

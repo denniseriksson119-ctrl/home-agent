@@ -32,7 +32,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - run: docker build --tag codex-remote-test:ci ./codex_remote_test
+      - name: Build with a conflicting Supervisor-style base argument
+        run: docker build --build-arg BUILD_FROM=alpine:3.22 --tag codex-remote-test:ci ./codex_remote_test
+      - name: Verify Debian base and Node despite the conflicting argument
+        run: docker run --rm --network none --entrypoint /bin/sh codex-remote-test:ci -c 'test -f /etc/debian_version && command -v apt-get && command -v npm'
       - name: Start isolated container without network or account
         run: |
           docker volume create codex-test-data
