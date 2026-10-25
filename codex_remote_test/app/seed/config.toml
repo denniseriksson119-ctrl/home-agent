@@ -1,0 +1,7 @@
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+forced_login_method = "chatgpt"
+cli_auth_credentials_store = "file"
+
+[projects."/data/workspace"]
+trust_level = "trusted"

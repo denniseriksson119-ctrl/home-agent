@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex på Pi — anslutningsprov</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#122027;color:#eef5f4}
+body{max-width:44rem;margin:auto;padding:20px;line-height:1.55}h1{font-size:1.7rem;line-height:1.25}h2{font-size:1.2rem}
+section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:16px;margin:16px 0}button,a.link{font:inherit;border-radius:9px;padding:12px 16px;border:0;background:#a8efd0;color:#123126;display:inline-block;margin:6px 8px 6px 0;text-decoration:none;cursor:pointer}button:disabled{opacity:.45;cursor:default}.secondary{background:#3b515d;color:white}code{overflow-wrap:anywhere}.code{display:block;font:700 1.8rem monospace;letter-spacing:.08em;margin:12px 0;user-select:all}#notice{white-space:pre-wrap;border-left:4px solid #a8efd0;padding-left:12px}[hidden]{display:none!important}.small{font-size:.92rem;color:#c3d5d9}
+</style></head><body>
+<h1>Codex på Pi — anslutningsprov</h1>
+<p>Detta tillägg provar en anslutning från ChatGPT-appen till Codex på din Pi. Mobilparkopplingen är experimentell. Det arbetar i en egen testmapp, separat från Home Agent.</p>
+<p id="status" role="status">Kontrollerar Codex…</p><p id="notice" aria-live="polite"></p>
+<section><h2>1. Logga in med ChatGPT</h2>
+<p>Använd samma ChatGPT-konto som i mobilappen. Detta gäller OpenAI, inte ditt Google-konto. Ingen API-nyckel behövs.</p>
+<p class="small">Aktivera först enhetsinloggning (Device code login) i ChatGPT-kontots säkerhetsinställningar om OpenAI kräver det.</p>
+<button data-action="login">Hämta inloggningskod</button>
+<div id="login" hidden><span class="code" id="login-code"></span><a class="link" id="login-link" href="https://auth.openai.com/codex/device" target="_blank" rel="noopener noreferrer">Öppna OpenAI-inloggning</a><p>Återvänd hit när du har godkänt. Sidan kontrollerar resultatet automatiskt.</p></div>
+<button class="secondary" data-action="cancel">Avbryt pågående försök</button></section>
+<section><h2>2. Anslut mobilen</h2>
+<button data-action="start">Starta fjärranslutning</button><button data-action="pair">Skapa parkod</button>
+<div id="pair" hidden><span class="code" id="pair-code"></span><p id="expiry"></p></div>
+<p>Öppna <strong>Remote / Codex</strong> i den uppdaterade ChatGPT-appen och välj att lägga till en anslutning. Använd parkoden om appen erbjuder kodinmatning.</p>
+<p class="small">Om appen enbart erbjuder QR-skanning, om Pi:n inte blir valbar eller om en datorapp krävs: stanna där och notera vad som visas. En skapad parkod är inte bevis på att direkt mobilanslutning stöds för ditt konto.</p>
+<button class="secondary" data-action="stop">Stoppa fjärranslutning</button></section>
+<section><h2>3. Prova och starta om</h2>
+<p>Välj projektmappen <code>/data/workspace</code> om mobilen frågar efter projekt. Skicka sedan i den anslutna Codex-konversationen:</p>
+<blockquote>Läs README.md i /data/workspace och återge testmarkören. Skapa sedan session-test.txt med en kort anteckning om att anslutningen fungerar.</blockquote>
+<p>Förväntad markör: <code>CODEX_PI_TEST_OK</code>. Starta därefter om tillägget från Home Assistant och försök fortsätta samma konversation. Be Codex läsa <code>session-test.txt</code>.</p>
+<p class="small">Tillägget sparar inloggning, testfiler och Codex-historik i sin egen /data. En tidigare startad fjärrprocess startas igen efter omstart när ChatGPT-inloggningen fortfarande är giltig. Kopplingen på mobilen behöver verifieras separat.</p></section>
+<script nonce="__CSRF__">
+const csrf='__CSRF__';
+const statusNode=document.getElementById('status'), notice=document.getElementById('notice');
+let sending=false;
+async function refresh(){
+ try{
+  const response=await fetch('api/status',{cache:'no-store'});
+  if(!response.ok)throw Error();
+  const s=await response.json();
+  statusNode.textContent='Codex '+s.version+' · '+(s.authenticated?'ChatGPT inloggat':'Inte inloggad')+' · '+(s.remote_running?'Fjärrprocess igång':'Fjärrprocess stoppad');
+  notice.textContent=s.message;
+  document.getElementById('login').hidden=!s.login_code;
+  document.getElementById('login-code').textContent=s.login_code||'';
+  document.getElementById('pair').hidden=!s.pair_code;
+  document.getElementById('pair-code').textContent=s.pair_code||'';
+  document.getElementById('expiry').textContent=s.pair_code?'Koden visas i högst '+Math.max(0,Math.ceil(s.pair_expires-Date.now()/1000))+' sekunder till. Skapa en ny om den gått ut.':'';
+  for(const button of document.querySelectorAll('button[data-action]')){
+   const a=button.dataset.action;
+   button.disabled=sending||!s.supported||
+    (a==='login'&&(s.busy||s.remote_running))||
+    (a==='start'&&(!s.authenticated||s.busy||s.remote_running))||
+    (a==='pair'&&(!s.authenticated||!s.remote_running||s.busy))||
+    (a==='cancel'&&!s.busy)||(a==='stop'&&!s.remote_running&&!s.remote_enabled);
+  }
+ }catch{notice.textContent='Tillägget kunde inte nås. Öppna det på nytt från Home Assistant efter omstart.';}
+}
+for(const button of document.querySelectorAll('button[data-action]'))button.addEventListener('click',async()=>{
+ sending=true;button.disabled=true;
+ try{
+  const response=await fetch('api/action',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({action:button.dataset.action})});
+  const data=await response.json();
+  if(!response.ok){notice.textContent=data.error;return;}
+ }catch{notice.textContent='Åtgärden kunde inte skickas. Öppna tillägget på nytt.';}
+ finally{sending=false;}
+ await refresh();
+});
+refresh();setInterval(refresh,2000);
+</script></body></html>

@@ -211,3 +211,15 @@ A file uploaded by the secondary account is normally owned by that account even 
 This refines DD-041's exchange-folder placement: any new managed reading subtree belongs under the existing approved root. The 0.8.5/0.8.6 exporter still creates an independent app-owned root and does not implement this policy. Account-level folder sharing does not itself authorize the OAuth app with drive.file; a supported file/folder authorization route must be proven before resuming setup. DD-042 remains a description of the delivered device flow, not proof that it can access this pre-existing root.
 
 See [account/storage policy](../architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) and [BL-DRIVE-001–004](../development/BACKLOG.md). Recording this backlog does not authorize automatic ownership changes, cleanup, production scripting or new runtime implementation.
+
+## DD-044 — Isolated Codex mobile connection experiment on Home Assistant OS
+
+**Status:** Implementation authorized by owner, 2026-10-25; actual Pi/mobile acceptance pending.
+
+Provide a separate Codex Remote Test add-on (initial version 0.1.0) for ARM64 and amd64, using pinned public Codex CLI 0.164.0. The owner uses the existing ChatGPT Android app and ChatGPT account, without a separate model API key. A Home Assistant Ingress-only setup page handles fixed device-login, foreground remote-control, manual pairing-code and stop/cancel operations.
+
+The add-on runs unprivileged after private directory preparation and persists its own test workspace, CLI credentials and history. It mounts no Home Agent, host or shared production data and requests no Supervisor, Home Assistant or Docker API privileges. It supplies no bypass flags. Normal workspace sandbox and on-request approvals remain enabled. Network access to OpenAI is necessary; container isolation is not a blanket LAN network restriction.
+
+A successful build, process startup or pairing-code response does not prove mobile support. CLI remote control is experimental and the documented mobile route still uses a desktop host. Verify actual Android pairing, synthetic file access and conversation resumption after restart before any further integration. If unavailable, report the concrete limitation rather than exposing an app-server port or claiming a working connection.
+
+This experiment does not change Home Agent runtime, Drive architecture or domain approval rules. Home Agent stays at 0.8.6; the separate add-on has its own version/isolation CI guard. See [installation and acceptance](../../codex_remote_test/DOCS.md).
