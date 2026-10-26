@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.11
+
+- Lägg till Mer → Granska arkivnamn: datum, läsbar beskrivning och kort Source-ID med tvåstegsgodkännande före lokalt namnbyte.
+- Placera granskade bilder i år/månad; okänt datum kräver uttryckligt val och märks undated/Photos/Undated. Datum i filnamn markeras som osäkert förslag.
+- Bevara originalbyte, originalnamn, Source-ID:n och kopplingar. Uppdatera lagringsreferens och audit atomiskt, med beständig plan och återhämtning på båda sidor om commit.
+- Rapportera tidigare tekniska importnamn som technical_preserved, skilt från arkitekturens nya namn. Ingen automatisk namnändring eller ny import behövs vid uppdatering.
+
 ## 0.8.10
 
 - Lägg till skrivskyddad Arkivkontroll under Mer: relativa sökvägar, fil-/SHA-256-kontroll, lokal mapp-/namnregel och explicita kopplingar.

@@ -1,6 +1,9 @@
 # Äldre original till lokalt Home Agent-arkiv
 
 Leverans: Home Agent 0.8.9. Ingen import sker vid installation eller uppstart.
+Efter intag kan [granskade arkivnamn från 0.8.11](../architecture/REVIEWED_ARCHIVE_NAMES.md)
+ge datum/beskrivning/kort ID utan att original behöver importeras igen. De tekniska
+intagsnamnen nedan ska inte beskrivas som färdig arkitekturnamnsättning.
 Ägaren installerar, granskar planen och startar utvalt filurval i Home Agent.
 Codex-läsverktygens scope och behörighet ändras inte.
 

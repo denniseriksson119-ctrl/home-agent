@@ -163,19 +163,13 @@ def report(db_path, root, source_id=None, after=None):
             relative = checks['relative_path']
             layout, naming = 'not_checked', 'not_checked'
             if relative:
-                path = Path(relative)
-                if path.parent.as_posix() in expected_dirs:
-                    layout = 'current'
-                elif path.parent == Path('.') and path.name == sid:
-                    layout = 'legacy_preserved'
-                else:
-                    layout = 'deviation'
-                naming = ('current' if path.name == sid + '__' + source_archive.portable_name(str(name or ''))
-                          else 'legacy_preserved' if layout == 'legacy_preserved' else 'deviation')
+                layout, naming, expected_dirs = source_archive.name_checks(relative, sid, str(name or ''), str(media or ''), expected_dirs)
             verified = checks['file_check'] == 'regular_file' and checks['checksum_check'] == 'matches' and custody == 'local_verified'
             status = 'verified' if verified else 'not_verified'
             if verified and layout == naming == 'legacy_preserved':
                 status = 'legacy_preserved'
+            if verified and layout == naming == 'technical_preserved':
+                status = 'technical_preserved'
             if bad_links or not related or layout == 'deviation' or naming == 'deviation':
                 status = 'deviation'
             entries.append(dict(source_id=sid, original_name=str(name or '')[:500],
@@ -184,7 +178,7 @@ def report(db_path, root, source_id=None, after=None):
                 **checks, layout_check=layout, name_check=naming, expected_directories=sorted(expected_dirs),
                 links=public_links[:100], link_count=len(public_links), links_truncated=len(public_links) > 100,
                 links_check='dangling' if bad_links else 'linked' if related else 'unlinked', status=status))
-        result = dict(contract_version='1', scope='registered-source-archive', rules_version='local-0.8.9',
+        result = dict(contract_version='1', scope='registered-source-archive', rules_version='archive-0.8.11',
                       checked_at=started, revision=revision, total_sources=len(sources), entries=entries,
                       next_after=entries[-1]['source_id'] if more else None,
                       coverage='registered_sources_only', read_only=True)
@@ -199,6 +193,8 @@ LABELS = dict(regular_file='Filen finns', missing='Filen saknas', unsafe_path='O
     outside_store='Utanför källagret — sökvägen visas inte', no_local_reference='Lokal referens saknas',
     not_regular_file='Inte en vanlig fil', unreadable='Filen kunde inte läsas', matches='Stämmer', mismatch='Stämmer inte',
     current='Följer lokal regel', legacy_preserved='Bevarat äldre format', deviation='Avvikelse',
+    technical_preserved='Tekniskt importnamn — arkivnamn återstår', architectural='Följer arkitekturens arkivnamn',
+    architectural_undated='Arkivnamn med uttryckligen okänt datum',
     not_checked='Inte kontrollerat', not_checked_time_limit='Inte verifierat inom tidsgränsen — prova enskild kontroll',
     not_checked_size_limit='Inte verifierat — storleksgräns', invalid_recorded_checksum='Giltig referenschecksumma saknas',
     changed_during_check='Filen ändrades under kontrollen', local_verified='Verifierad lokal källa',
@@ -212,7 +208,8 @@ def page(db_path, root, query=''):
         return ui.shell('Arkivkontroll', '<h1>Arkivkontroll</h1>', error='Kontrollen kunde inte slutföras. Öppna sidan igen eller prova ett enskilt Source-ID.'), 503
     body = '<h1>Arkivkontroll</h1><p>Skrivskyddad kontroll av registrerade original. Inga filer flyttas eller döps om.</p>'
     body += '<p>Visar %s av %s registrerade källor. Kontrollerat: %s.</p>' % (len(result['entries']), result['total_sources'], ui.esc(result['checked_at']))
-    body += '<p>Regler: lokalt arkiv 0.8.9. Datum/beskrivande arkivnamn och år/månad-mappar ingår inte i denna regel. Oregistrerade filer inventeras inte.</p>'
+    body += '<p>Regler: datum + beskrivning + kort Source-ID. Bilder grupperas i år/månad, eller Undated vid uttryckligen okänt datum. Tekniska importnamn och äldre lagring redovisas separat. Oregistrerade filer inventeras inte.</p>'
+    body += "<p><a href='/archive/names'>Granska föreslagna arkivnamn</a></p>"
     for entry in result['entries']:
         body += "<section class='card'><h2>%s</h2><p>Source-ID: %s</p><p>Relativ sökväg: <code>%s</code></p>" % (ui.esc(entry['original_name']), ui.esc(entry['source_id']), ui.esc(entry['relative_path'] or 'Visas inte'))
         for label, key in [('Fil', 'file_check'), ('SHA-256', 'checksum_check'), ('Lokal custody', 'custody_check'),

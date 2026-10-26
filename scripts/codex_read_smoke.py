@@ -84,6 +84,28 @@ def seed():
         body = response.read()
         assert b'ci-manual' in body and b'/data/sources' not in body
         assert response.headers['Cache-Control'] == 'no-store'
+    # Exercise the actual two-step owner naming form, not a direct helper call.
+    with opener.open('http://127.0.0.1:8099/archive/names') as response:
+        csrf = re.search(rb"name='csrf' value='([0-9a-f]{64})'", response.read()).group(1).decode()
+    fields = {'csrf': csrf, 'action': 'preview', 'selected': ['ci-manual', 'ci-photo'],
+              'unknown_ci-manual': 'yes', 'date_ci-manual': '', 'description_ci-manual': 'Synthetic manual',
+              'date_ci-photo': '2026-01-02', 'description_ci-photo': 'Synthetic photo'}
+    request = urllib.request.Request('http://127.0.0.1:8099/archive/names', urlencode(fields, doseq=True).encode(),
+        headers={'Origin': 'null', 'Content-Type': 'application/x-www-form-urlencoded'})
+    with opener.open(request) as response:
+        plan_id = re.search(rb"name='plan' value='([0-9a-f]{32})'", response.read()).group(1).decode()
+    request = urllib.request.Request('http://127.0.0.1:8099/archive/names',
+        urlencode({'csrf': csrf, 'action': 'apply', 'plan': plan_id}).encode(),
+        headers={'Origin': 'null', 'Content-Type': 'application/x-www-form-urlencoded'})
+    with opener.open(request) as response:
+        assert response.status == 200
+    for attempt in range(80):
+        with opener.open('http://127.0.0.1:8099/archive/names?plan=' + plan_id) as response:
+            if response.read().count(b'<p>Klar</p>') == 2:
+                break
+        if attempt == 79:
+            raise AssertionError('Reviewed archive names did not complete')
+        time.sleep(.25)
     Path('/data/ci-db-sha').write_text(hashlib.sha256(server.DB_FILE.read_bytes()).hexdigest())
     print('PASS: real setup GET and CSRF-authorized opaque-origin POST create read key; synthetic PDF and PNG seeded')
 
@@ -126,8 +148,9 @@ def verify(reconnect=True):
     assert audit['scope'] == 'registered-source-archive' and audit['read_only'] is True
     assert {s['source_id'] for s in audit['entries']} == {'ci-manual', 'ci-photo'}
     assert all(s['checksum_check'] == 'matches' for s in audit['entries'])
-    assert all(s['relative_path'] == s['source_id'] for s in audit['entries'])
-    assert all(s['layout_check'] == 'legacy_preserved' for s in audit['entries'])
+    assert {s['layout_check'] for s in audit['entries']} == {'architectural', 'architectural_undated'}
+    assert any(s['relative_path'].startswith('Photos/2026/01/2026-01-02_synthetic-photo__src-') for s in audit['entries'])
+    assert any(s['relative_path'].startswith('Documents/Other/undated_synthetic-manual__src-') for s in audit['entries'])
     text = subprocess.check_output(['pdftotext', manual['local_path'], '-'])
     assert b'CODEX_NIBE_PDF_OK' in text
     assert Path(photo['local_path']).read_bytes().startswith(b'\x89PNG\r\n\x1a\n')

@@ -14,6 +14,8 @@ import object_resources
 import source_migration
 import source_migration_ui
 import archive_audit
+import archive_names
+import archive_names_ui
 import copy
 import hashlib
 import difflib
@@ -40,6 +42,7 @@ DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 GOOGLE_DEVICE = google_device.Controller()
 CODEX_READ = codex_read.ReadService(DB_FILE, SOURCE_DIR)
 SOURCE_MIGRATION = source_migration.Controller()
+ARCHIVE_NAMES = archive_names.Controller()
 
 
 def migration_credentials():
@@ -677,7 +680,23 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if urlparse(self.path).path in ('/source/file', '/inbox/file'):
+            if not CODEX_READ.slot.acquire(blocking=False):
+                self.send_error(503, 'En kontroll eller ett namnbyte pågår. Försök igen.')
+                return
+            try:
+                return Handler.route_GET(self)
+            finally:
+                CODEX_READ.slot.release()
+        return Handler.route_GET(self)
+
+    def route_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/archive/names':
+            archive_names_ui.handle(self, ARCHIVE_NAMES, DB_FILE, SOURCE_DIR,
+                                    DB_FILE.parent / 'archive-name-plans', CODEX_READ.slot,
+                                    import_running=SOURCE_MIGRATION.running())
+            return
         if parsed.path == '/archive/check':
             if not CODEX_READ.slot.acquire(blocking=False):
                 self.send_page(ui.shell('Arkivkontroll', '<h1>Arkivkontroll</h1><p>En kontroll eller läsning pågår. Försök igen.</p>'), 503)
@@ -822,7 +841,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_page(render(data, error))
 
     def do_POST(self):
+        if urlparse(self.path).path == '/archive/names':
+            archive_names_ui.handle(self, ARCHIVE_NAMES, DB_FILE, SOURCE_DIR,
+                                    DB_FILE.parent / 'archive-name-plans', CODEX_READ.slot,
+                                    import_running=SOURCE_MIGRATION.running(), post=True)
+            return
         if urlparse(self.path).path == '/sources/import':
+            if ARCHIVE_NAMES.running():
+                self.send_error(409, 'Arkivnamn uppdateras. Vänta tills planen är klar.')
+                return
             source_migration_ui.handle(self, SOURCE_MIGRATION, DB_FILE, SOURCE_DIR,
                                        DB_FILE.parent / 'source-imports', migration_credentials, uuid7, post=True)
             return

@@ -155,3 +155,10 @@ Room-related documents/equipment/systems link to these pages, and explicit room
 Source links are also listed directly. **Mer → Överför äldre original** offers
 an unselected per-file preview and explicit start/pause/resume of a private
 legacy-original plan. It does not infer new memberships or run at installation.
+
+In 0.8.11 **Mer → Granska arkivnamn** proposes registered-source dates and
+descriptions, clearly labels filename-derived dates and requires explicit
+unknown-date approval when no date is known. A second preview shows exact old
+and new relative paths before owner-approved local renaming. Source identity,
+original names, bytes and object links remain unchanged. The read-only archive
+report distinguishes architectural, technical intake and legacy names.
