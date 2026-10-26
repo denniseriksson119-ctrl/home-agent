@@ -13,6 +13,7 @@ from pathlib import Path
 APP = Path(__file__).resolve().parents[1] / 'codex_remote_test/app'
 sys.path.insert(0, str(APP))
 from controller import Controller, TestError, parse_pair
+from remote_rpc import RemoteError
 
 spec = importlib.util.spec_from_file_location('codex_test_web', APP / 'server.py')
 web = importlib.util.module_from_spec(spec)
@@ -27,8 +28,8 @@ while args[:1]==['-c']:
     args=args[2:]
 if args==['--version']:
     print('codex-cli 0.164.0')
-elif args==['remote-control','--no-daemon','--help']:
-    print('experimental remote-control')
+elif args==['app-server','--help']:
+    print('app-server --listen unix://PATH')
 elif args==['login','status']:
     if (root/'status-error').exists():
         print('Error checking login status: private-provider-error secret-token');sys.exit(1)
@@ -48,15 +49,13 @@ elif args==['login','--device-auth']:
             print('Successfully logged in');sys.exit(0)
         time.sleep(.01)
     sys.exit(1)
-elif args==['remote-control','--no-daemon']:
+elif args[:2]==['app-server','--listen']:
     print('secret-provider-diagnostic',flush=True)
     if (root/'remote-fail').exists():sys.exit(9)
     while True:time.sleep(.05)
 elif args==['remote-control','pair','--json']:
-    if (root/'bad-pair').exists():
-        print('private-provider-error refresh_token=secret');sys.exit(3)
-    print(json.dumps({'pairingCode':'DO-NOT-EXPOSE-CREDENTIAL','manualPairingCode':'TEST-PAIR',
-                      'environmentId':'private-environment','expiresAt':time.time()+90}))
+    (root/'wrong-pair-server').touch()
+    print('Wrong daemon, not the foreground server');sys.exit(3)
 elif args==['probe-env']:
     print(json.dumps(dict(os.environ)))
 elif args==['large']:
@@ -86,9 +85,20 @@ class ControllerTests(unittest.TestCase):
         self.controller = self.new_controller()
 
     def new_controller(self):
-        controller = Controller(self.root, self.binary)
+        controller = Controller(self.root, self.binary, rpc=self.rpc)
         self.addCleanup(controller.close)
         return controller
+
+    def rpc(self, path, method, params):
+        self.assertEqual(path, self.root / 'home/remote-test.sock')
+        if method == 'remoteControl/pairing/start':
+            if (self.root / 'home/bad-pair').exists():
+                raise RemoteError('rpc', -32000)
+            self.assertEqual(params, {'manualCode': True})
+            return {'pairingCode': 'DO-NOT-EXPOSE-CREDENTIAL', 'manualPairingCode': 'TEST-PAIR',
+                    'environmentId': 'private-environment', 'expiresAt': time.time()+90}
+        status = 'connecting' if (self.root / 'home/connecting').exists() else 'connected'
+        return {'status': status, 'serverName': 'private-host', 'environmentId': 'private-environment'}
 
     def initialize(self):
         self.controller.initialize()
@@ -116,6 +126,7 @@ class ControllerTests(unittest.TestCase):
         self.initialize()
         self.grant()
         self.controller.action('start')
+        until(lambda: self.controller.status()['remote_status'] == 'connected')
         self.controller.action('pair')
         until(lambda: not self.controller.status()['busy'])
         status = self.controller.status()
@@ -123,6 +134,7 @@ class ControllerTests(unittest.TestCase):
         self.assertNotIn('DO-NOT-EXPOSE', json.dumps(status))
         self.assertNotIn('private-environment', json.dumps(status))
         self.assertNotIn('secret-provider-diagnostic', json.dumps(status))
+        self.assertFalse((self.controller.home / 'wrong-pair-server').exists())
         marker = self.controller.workspace / 'session-test.txt'
         marker.write_text('synthetic session note')
         self.controller.close()
@@ -171,6 +183,7 @@ class ControllerTests(unittest.TestCase):
         self.initialize()
         self.grant()
         self.controller.action('start')
+        until(lambda: self.controller.status()['remote_status'] == 'connected')
         (self.controller.home / 'bad-pair').touch()
         self.controller.action('pair')
         until(lambda: not self.controller.status()['busy'])
@@ -228,6 +241,53 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse((self.controller.home / 'login-started').exists())
         self.assertEqual((self.controller.codex_home / 'auth.json').read_bytes(), original)
         self.assertEqual(self.controller.status()['auth_state'], 'signed_in')
+
+    def test_pair_requires_connected_relay_not_merely_a_running_process(self):
+        self.initialize()
+        self.grant()
+        marker = self.controller.home / 'connecting'
+        marker.touch()
+        self.controller.action('start')
+        until(lambda: self.controller.status()['remote_status'] == 'connecting')
+        self.assertTrue(self.controller.status()['remote_running'])
+        with self.assertRaises(TestError):
+            self.controller.action('pair')
+        marker.unlink()
+        until(lambda: self.controller.status()['remote_status'] == 'connected')
+        self.controller.action('pair')
+        until(lambda: not self.controller.status()['pair_pending'])
+        self.assertEqual(self.controller.status()['pair_code'], 'TEST-PAIR')
+
+    def test_cancel_discards_a_late_pairing_response(self):
+        import threading
+        self.initialize()
+        self.grant()
+        self.controller.action('start')
+        until(lambda: self.controller.status()['remote_status'] == 'connected')
+        entered, release = threading.Event(), threading.Event()
+        def slow(path, method, params):
+            if method == 'remoteControl/pairing/start':
+                entered.set()
+                release.wait(2)
+            return self.rpc(path, method, params)
+        self.controller.rpc = slow
+        self.controller.action('pair')
+        self.assertTrue(entered.wait(1))
+        self.controller.action('cancel')
+        release.set()
+        until(lambda: not self.controller.status()['busy'])
+        self.assertIsNone(self.controller.status()['pair_code'])
+
+    def test_control_socket_symlink_is_not_followed_or_removed(self):
+        self.initialize()
+        self.grant()
+        target = self.controller.workspace / 'README.md'
+        before = target.read_bytes()
+        self.controller.control_socket.symlink_to(target)
+        with self.assertRaises(TestError):
+            self.controller.action('start')
+        self.assertEqual(target.read_bytes(), before)
+        self.assertTrue(self.controller.control_socket.is_symlink())
 
     def test_stale_signed_out_state_is_rechecked_before_destructive_cli_login(self):
         self.initialize()
@@ -383,6 +443,48 @@ class HTTPTests(unittest.TestCase):
         self.assertNotIn('<script src=', page)
         self.assertNotIn('auth.json', page)
         self.assertNotIn('<input', page)
+
+
+class RPCTests(unittest.TestCase):
+    def fake_socket(self, responses):
+        from unittest.mock import Mock
+        socket = Mock()
+        socket.recv.side_effect = [json.dumps(response) for response in responses]
+        return socket
+
+    def test_protocol_initializes_experimental_api_and_uses_only_requested_local_method(self):
+        from unittest.mock import patch
+        from remote_rpc import request
+        socket = self.fake_socket([{'id': 1, 'result': {}}, {'method': 'some/notification'},
+                                   {'id': 2, 'result': {'status': 'connected'}}])
+        with patch('remote_rpc._connect', return_value=socket) as connect:
+            result = request(Path('/private/test.sock'), 'remoteControl/status/read')
+        self.assertEqual(result, {'status': 'connected'})
+        connect.assert_called_once_with(Path('/private/test.sock'), 10)
+        messages = [json.loads(call.args[0]) for call in socket.send.call_args_list]
+        self.assertTrue(messages[0]['params']['capabilities']['experimentalApi'])
+        self.assertEqual(messages[-1]['method'], 'remoteControl/status/read')
+        self.assertTrue(socket.close.called)
+
+    def test_rpc_error_does_not_echo_provider_body(self):
+        from unittest.mock import patch
+        from remote_rpc import request
+        socket = self.fake_socket([{'id': 1, 'result': {}},
+                                   {'id': 2, 'error': {'code': -32000, 'message': 'private token content'}}])
+        with patch('remote_rpc._connect', return_value=socket), self.assertRaises(RemoteError) as caught:
+            request(Path('/private/test.sock'), 'remoteControl/pairing/start', {'manualCode': True})
+        self.assertEqual(caught.exception.code, -32000)
+        self.assertNotIn('private token content', str(caught.exception))
+
+    def test_arbitrary_method_and_oversized_response_are_rejected(self):
+        from unittest.mock import Mock, patch
+        from remote_rpc import request
+        with self.assertRaises(RemoteError):
+            request(Path('/private/test.sock'), 'command/exec', {'command': 'arbitrary'})
+        socket = Mock()
+        socket.recv.return_value = 'x'*65537
+        with patch('remote_rpc._connect', return_value=socket), self.assertRaises(RemoteError):
+            request(Path('/private/test.sock'), 'remoteControl/status/read')
 
 
 if __name__ == '__main__':

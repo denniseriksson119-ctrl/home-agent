@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- Begär parkod från samma Codex app-server som fjärranslutningen använder. Tidigare startades en förgrundsprocess medan parkodskommandot sökte en separat bakgrundsserver.
+- Använd en privat Unix-socket inne i containern, utan ny nätverksport eller systemd-beroende.
+- Visa faktisk OpenAI-anslutningsstatus och tillåt parkod först vid ansluten status.
+- Visa vänteläge och säkra felmeddelanden direkt vid parkodsknappen. Ett parkodsfel tolkas inte som bevis för saknat kontostöd.
+- Kontrollera det riktiga Unix/WebSocket-protokollet med CLI 0.164.0 i offline-containerprov på ARM64 och amd64. Verklig OpenAI-/Android-parkoppling återstår.
+
 ## 0.1.2
 
 - Läs om sparad inloggning vid sidöppning och via knappen Kontrollera sparad inloggning.

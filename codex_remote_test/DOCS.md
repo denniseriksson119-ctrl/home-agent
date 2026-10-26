@@ -15,7 +15,7 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det nya separata tillägget **Codex Remote Test**, version **0.1.2**, och installera.
+4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.3**, och installera eller uppdatera.
    Detta är en ny app, inte en uppdatering av Home Agent 0.8.6.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
@@ -64,15 +64,26 @@ Avbrytning stoppar försöket men återkallar inte credentials som OpenAI redan 
 
 ## 2. Prova parkoppling
 
-1. Tryck **Starta fjärranslutning**. Kontrollera att status säger **Fjärrprocess igång**.
+1. Tryck **Starta fjärranslutning** om den inte redan startats automatiskt. Vänta tills status säger **Ansluten till OpenAI**. En startad process räcker inte; knappen för parkod aktiveras när anslutningen är klar.
 2. Tryck **Skapa parkod**. En tidsbegränsad manuell kod visas om CLI/konto stöder detta.
 3. Öppna ChatGPT-appens **Remote / Codex**, välj att lägga till en anslutning och
    använd koden **om appen erbjuder manuell kodinmatning**.
 4. Kontrollera att enheten går att välja och att du kan öppna eller skapa en Codex-konversation på den.
 5. Välj **/data/workspace** som projektmapp om appen frågar efter projekt.
 
+Version 0.1.3 använder samma privata Codex app-server för anslutningsstatus och
+parkod, via en Unix-socket inne i containern. Ingen TCP-port öppnas för servern.
+Tidigare versioner blandade förgrundsprocessen med ett parkodskommando som sökte
+en separat bakgrundsserver. Felmeddelandet om kontots fjärrstöd kunde därför vara
+missvisande. Uppdatera till 0.1.3 och återanvänd den sparade inloggningen.
+
+Vänteläge och eventuella säkra felkoder visas direkt vid parkodsknappen. Om
+anslutningen visar fel: stoppa och starta fjärranslutningen igen. En parkod som
+inte kan skapas är inte i sig bevis för att kontot saknar stöd; starta ingen ny
+enhetsinloggning enbart på grund av ett sådant fel.
+
 **Viktig provgräns:** Den offentliga mobilguiden beskriver fortfarande parkoppling via
-en Mac-/Windows-app. CLI:s `remote-control` och manuella parkoder är experimentella.
+en Mac-/Windows-app. Codex fjärrprotokoll och manuella parkoder är experimentella.
 Om mobilen bara erbjuder QR-skanning, kräver en datorapp eller inte visar enheten:
 stanna där och rapportera exakt vad som visas. En igångvarande process och skapad
 parkod bevisar inte en lyckad eller stödd direkt mobilanslutning. Exponera inte en
@@ -114,6 +125,7 @@ under provet. Home Agent fortsätter vara ett separat tillägg.
 ## Säkerhet och avgränsning
 
 - Endast Home Assistant Ingress, ingen publicerad host-port eller godtycklig terminalendpoint.
+- Lokal styrning sker över samma privata Unix/WebSocket-anslutning till app-servern för start, status och parkod. Endast tre fasta fjärrmetoder används, utan användarstyrd metod eller adress.
 - Processerna körs som UID 10001 efter förberedelse av tilläggets privata kataloger.
 - Inga host-/Docker-/Supervisor-/Home Assistant-API-behörigheter eller delade datamappningar begärs.
 - Codex får normal workspace-sandbox och on-request-godkännanden, inga bypass-flaggor.
@@ -121,6 +133,7 @@ under provet. Home Agent fortsätter vara ett separat tillägg.
 - Sessions- och workspace-data innehåller det du ger Codex. Home Assistant-backuper som omfattar tillägget måste därför hanteras som privata, inklusive credentials.
 - Containern har nätåtkomst för OpenAI. Separat container innebär inte att nätåtkomst till alla andra LAN-tjänster är tekniskt spärrad. Inga Home Agent-integrationer är konfigurerade eller godkända genom detta prov.
 - CI kan verifiera container/CLI och syntetiska flöden. Pi-resurser, sandbox under HA:s AppArmor, verklig OpenAI-inloggning, Android-UI, parkoppling och konversationsåterupptagning kräver detta verkliga prov.
+- CI provar även initialize, statusläsning och nekad parkod mot samma riktiga CLI-server över Unix/WebSocket, utan nätverk eller aktiverad OpenAI-reläanslutning. Det verifierar det lokala protokollet, inte kontots fjärrbehörighet.
 
 ## Underlag
 

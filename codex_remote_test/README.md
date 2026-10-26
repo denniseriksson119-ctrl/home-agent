@@ -1,6 +1,6 @@
 # Codex Remote Test — Home Assistant OS
 
-Separat experimentellt tillägg, version **0.1.2**, med **Codex CLI 0.164.0** för ARM64 och amd64.
+Separat experimentellt tillägg, version **0.1.3**, med **Codex CLI 0.164.0** för ARM64 och amd64.
 Det testar om ChatGPT-appen på Android/iOS kan styra en Codex-session på denna enhet utan en dator som mellanled.
 
 Tillägget är inte en färdig Home Agent-integration. Det har egen privat lagring,
