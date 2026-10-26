@@ -52,7 +52,9 @@ jobs:
           if [ "$(uname -m)" = aarch64 ]; then arch=aarch64; fi
           docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/$arch-base:3.21 --tag home-agent:ci ./home_agent
           docker network create --internal codex-read-ci
-          docker network connect codex-read-ci codex-test
+          docker rm --force codex-test
+          docker run --detach --name codex-test --network codex-read-ci --mount source=codex-test-data,target=/data codex-remote-test:ci
+          docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
           docker run --detach --name home-agent-read --hostname local-home-agent --network codex-read-ci --network-alias local-home-agent home-agent:ci
           docker cp scripts/codex_read_smoke.py home-agent-read:/tmp/codex_read_smoke.py
           docker exec home-agent-read python3 /tmp/codex_read_smoke.py seed
