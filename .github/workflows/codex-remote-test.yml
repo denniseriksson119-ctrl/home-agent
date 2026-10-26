@@ -1,10 +1,10 @@
 name: Codex Remote Test
 on:
   pull_request:
-    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/codex_development_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
   push:
     branches: [main]
-    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/codex_development_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
 permissions:
   contents: read
 jobs:
@@ -69,6 +69,15 @@ jobs:
           docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
           docker exec codex-test setpriv --reuid=10001 --regid=10001 --init-groups python3 /tmp/codex_read_smoke.py resumed
           docker exec home-agent-read python3 /tmp/codex_read_smoke.py unchanged
+      - name: Develop and run full project tests inside the add-on without network egress
+        run: |
+          git archive --format=tar HEAD > /tmp/codex-source.tar
+          docker cp /tmp/codex-source.tar codex-test:/tmp/codex-source.tar
+          docker cp scripts/codex_development_smoke.py codex-test:/tmp/codex_development_smoke.py
+          docker exec codex-test setpriv --reuid=10001 --regid=10001 --init-groups python3 /tmp/codex_development_smoke.py
+          docker restart codex-test
+          docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
+          docker exec codex-test setpriv --reuid=10001 --regid=10001 --init-groups python3 /tmp/codex_development_smoke.py --after-restart
       - name: Container diagnostics on failure
         if: failure()
         run: |

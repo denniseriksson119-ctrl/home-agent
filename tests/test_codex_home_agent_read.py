@@ -264,6 +264,44 @@ class ReadTests(unittest.TestCase):
 
 
 class MigrationTests(unittest.TestCase):
+    def test_read_only_role_upgrade_preserves_custom_guide_project_and_read_key(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            first = Controller(root)
+            instructions = first.workspace / 'AGENTS.md'
+            instructions.write_bytes((ROOT / 'codex_remote_test/app/seed/AGENTS.read-only.md').read_bytes())
+            guide = first.workspace / 'DEVELOPMENT.md'
+            guide.write_text('owner-custom development guide')
+            project = first.projects / 'existing-project'
+            project.mkdir()
+            code = project / 'work.py'
+            code.write_text('print("keep local changes")')
+            key = first.home / 'home-agent-read.json'
+            key.write_text('{"synthetic":"private cached read key"}')
+            key.chmod(0o600)
+            before = key.read_bytes()
+            first.close()
+            second = Controller(root)
+            self.assertIn('Utveckling av Home Agent', instructions.read_text())
+            self.assertEqual(guide.read_text(), 'owner-custom development guide')
+            self.assertEqual(code.read_text(), 'print("keep local changes")')
+            self.assertEqual(key.read_bytes(), before)
+            second.close()
+
+    def test_project_directory_symlink_is_rejected_without_changing_target(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            first = Controller(root)
+            first.projects.rmdir()
+            outside = root / 'outside'
+            outside.mkdir()
+            first.projects.symlink_to(outside)
+            first.close()
+            from controller import TestError
+            with self.assertRaises(TestError):
+                Controller(root)
+            self.assertEqual(list(outside.iterdir()), [])
+
     def test_generated_instructions_upgrade_but_custom_files_and_auth_are_preserved(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

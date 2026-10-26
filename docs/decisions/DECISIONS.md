@@ -234,3 +234,13 @@ The owner successfully connected the ChatGPT Android app directly to Codex on Pi
 First delivery: owner-enabled, dedicated read credential and fixed MCP tools for an object navigation index, bounded NIBE records and explicitly linked, checksum-verified original PDF/images. The database and source store remain inside Home Agent. Use a separate internal-only read port and reject mutations; do not grant filesystem mounts or Home Assistant/Supervisor privileges. Original downloads become private Codex working copies; revocation blocks new requests, not already received content.
 
 This is not autonomous backend AI, proposal application or backup. After real NIBE/PDF/image acceptance, implement structured proposal validation and semantic review before local commit. Implement and restore-test Drive backup separately. See [read contract and acceptance](../architecture/CODEX_HOME_AGENT_READ.md).
+
+## DD-046 — Develop Home Agent in the connected Codex session on Pi
+
+**Status:** Authorized by owner, 2026-10-26. Owner verified GitHub/Drive access in that session and requested development prerequisites.
+
+Codex Remote Test 0.1.6 adds image-installed Python test dependencies, venv and ripgrep alongside existing Git/Node/PDF tools. Prepare a persistent code-project directory and a local start guide. Allow approved source-code/test/doc work in branches and PR/CI delivery through the existing GitHub connection. Owner still performs merge and HA installation. Build containers in GitHub Actions; grant no host-Docker, Supervisor/HA APIs or production mounts.
+
+Upgrade only exact generated older workspace instructions; preserve custom instructions, credentials, read keys and existing code. Do not clone/pull/reset automatically on startup. Verify the real toolchain, full tests and synthetic local Git workflow in the actual ARM64/amd64 images, plus project persistence after restart. A version difference (Debian Python 3.11 versus release CI Python 3.12) is explicit and tested.
+
+The Home Agent read boundary remains in force. Development preparation is not authorization for production data writes, mass migration, Drive mutations or automatic deployment. Plan the old-data inventory and ID-preserving migration as a separate task. See [development setup and acceptance](../development/CODEX_PI_DEVELOPMENT.md).

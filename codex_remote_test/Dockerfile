@@ -5,7 +5,7 @@ FROM node:22-bookworm-slim
 
 RUN test -f /etc/debian_version && command -v apt-get && command -v npm \
     && apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-websocket poppler-utils git ca-certificates tini util-linux \
+    python3 python3-yaml python3-venv python3-websocket ripgrep poppler-utils git ca-certificates tini util-linux \
     && rm -rf /var/lib/apt/lists/*
 # Optional public build CA for managed build environments; never part of the image.
 RUN --mount=type=secret,id=proxy_ca \
@@ -14,7 +14,8 @@ RUN --mount=type=secret,id=proxy_ca \
     && npm cache clean --force \
     && codex --version \
     && codex app-server --help \
-    && python3 -c 'import websocket'
+    && python3 -c 'import websocket, yaml, venv' \
+    && rg --version
 
 RUN groupadd --gid 10001 codex-test \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /data/home codex-test

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6
+
+- Lägg till beständigt installerade utvecklingsberoenden: PyYAML, venv och ripgrep, utöver befintliga Git/Python/Node/PDF-verktyg.
+- Förbered privat projektdir och startguide för kodarbete från den anslutna Codex-konversationen.
+- Uppgradera exakt genererade arbetsinstruktioner för utveckling med branch/test/PR/CI. Bevara egna instruktioner, inloggning, läsnyckel och arbetsfiler.
+- Lägg till offline verktygskontroll och verkligt containerprov av full testsvit, lokal Git-ändring och projektbevarande efter omstart på ARM64/amd64.
+- Behåll Home Agents läsgräns, normala Codex-godkännanden och ägarens merge/installation. Ingen dataflytt eller ny host-/HA-behörighet ingår.
+
 ## 0.1.5
 
 - Opt-in Home Agent-läsverktyg via MCP: objektindex, aktuella NIBE-uppgifter och explicit kopplade original.

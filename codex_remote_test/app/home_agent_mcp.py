@@ -177,7 +177,7 @@ def dispatch(message):
         versions = {'2024-11-05', '2025-03-26', '2025-06-18'}
         version = params.get('protocolVersion')
         return {'protocolVersion': version if version in versions else '2024-11-05',
-                'capabilities': {'tools': {}}, 'serverInfo': {'name': 'home-agent-read', 'version': '0.1.5'}}
+                'capabilities': {'tools': {}}, 'serverInfo': {'name': 'home-agent-read', 'version': '0.1.6'}}
     if method == 'ping':
         return {}
     if method == 'tools/list':

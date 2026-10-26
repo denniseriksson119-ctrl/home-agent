@@ -69,6 +69,7 @@ class Controller:
         self.root, self.binary, self.clock = Path(root), str(binary), clock
         self.home = self.root / 'home'
         self.workspace = self.root / 'workspace'
+        self.projects = self.workspace / 'projects'
         self.codex_home = self.home / '.codex'
         self.state_file = self.home / 'remote-test.json'
         self.lock = threading.RLock()
@@ -104,13 +105,14 @@ class Controller:
         self._seed()
 
     def _seed(self):
-        for path in (self.home, self.workspace, self.codex_home):
+        for path in (self.home, self.workspace, self.codex_home, self.projects):
             path.mkdir(mode=0o700, exist_ok=True)
             if not stat.S_ISDIR(path.lstat().st_mode):
                 raise TestError('Testets datakatalog är ogiltig.')
         seed = Path(__file__).parent / 'seed'
         for name, target in [('README.md', self.workspace / 'README.md'),
                              ('AGENTS.md', self.workspace / 'AGENTS.md'),
+                             ('DEVELOPMENT.md', self.workspace / 'DEVELOPMENT.md'),
                              ('config.toml', self.codex_home / 'config.toml')]:
             try:
                 fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -120,9 +122,10 @@ class Controller:
             else:
                 with os.fdopen(fd, 'wb') as stream:
                     stream.write((seed / name).read_bytes())
-        # Upgrade only the exact generated connection-test instructions. Preserve user edits.
+        # Upgrade only exact generated instructions. Preserve custom owner edits.
         agent_file = self.workspace / 'AGENTS.md'
-        if agent_file.read_bytes() == (seed / 'AGENTS.connection-test.md').read_bytes():
+        if agent_file.read_bytes() in [(seed / name).read_bytes() for name in
+                                      ('AGENTS.connection-test.md', 'AGENTS.read-only.md')]:
             agent_file.write_bytes((seed / 'AGENTS.md').read_bytes())
         if self.state_file.exists() or self.state_file.is_symlink():
             info = self.state_file.lstat()

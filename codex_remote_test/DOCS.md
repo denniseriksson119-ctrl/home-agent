@@ -15,7 +15,7 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.5**, och installera eller uppdatera.
+4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.6**, och installera eller uppdatera.
    Uppdatera även Home Agent till **0.8.8** om du vill använda läskopplingen nedan.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
@@ -147,6 +147,18 @@ Inga produktionsvolymer monteras, inga ändringar kan sparas i Home Agent genom
 verktygen och inget Home Assistant-API används. Stäng av läsåtkomsten i Home
 Agent för att neka nya hämtningar; redan hämtade arbetskopior och chattinnehåll
 raderas inte. Drive-publicering är pausad och backup återstår.
+
+## Utveckla Home Agent från Pi-konversationen
+
+Från 0.1.6 ingår Git/Python/PyYAML/venv/rg/Node/npm och en egen kodmapp. Befintlig
+inloggning och läskoppling behålls. Skicka i Codex-konversationen:
+
+> Läs /data/workspace/DEVELOPMENT.md, kontrollera utvecklingsverktygen och förbered Home Agents kodprojekt. Läs projektets arbetsinstruktioner och redovisa aktuell revision. Ändra inga husdata.
+
+Se [utvecklingsmiljö, gränser och verifiering](../docs/development/CODEX_PI_DEVELOPMENT.md).
+GitHub/Drive används genom sessionens befintliga åtkomst. Codex ändrar och testar
+kod i en arbetsgren; ägaren gör merge och installation. Ingen automatisk
+husdatamigration, databasåtkomst eller host-Docker tillkommer.
 
 ## Stoppa provet
 
