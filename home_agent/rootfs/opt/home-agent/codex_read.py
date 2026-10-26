@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlparse
 import chatgpt_export
 import house_context
 import ui
+import archive_audit
 
 STATE = Path('/data/codex_read.json')
 PORT = 8100  # HA add-on network only; deliberately absent from host port mappings.
@@ -61,6 +62,20 @@ class ReadService:
         with self.lock:
             chatgpt_export.save_state(self.state_path, {'enabled': False})
 
+    def archive_enabled(self):
+        try:
+            return self.enabled() and self.state().get('archive_audit') is True
+        except Exception:
+            return False
+
+    def set_archive(self, enabled):
+        with self.lock:
+            if not self.enabled():
+                raise ValueError('Aktivera läsåtkomst först.')
+            value = self.state()
+            value['archive_audit'] = bool(enabled)
+            chatgpt_export.save_state(self.state_path, value)
+
     def context(self):
         context, sources = house_context.read_context(self.db_path)
         return {**context, 'checked_at': house_context.now(),
@@ -96,6 +111,12 @@ class ReadHandler(BaseHTTPRequestHandler):
             if self.path == '/v1/context':
                 context, _ = self.service.context()
                 self.reply(200, context)
+            elif urlparse(self.path).path == '/v1/archive-audit':
+                if not self.service.archive_enabled():
+                    self.reply(403, {'error': 'Arkivrapporten delas inte med Codex. Aktivera den separat i Home Agent.'})
+                    return
+                params = archive_audit.parameters(urlparse(self.path).query)
+                self.reply(200, archive_audit.report(self.service.db_path, self.service.source_dir, **params))
             elif re.fullmatch(r'/v1/source/[A-Za-z0-9_-]{1,100}', self.path):
                 ident = self.path.rsplit('/', 1)[1]
                 _, sources = self.service.context()
@@ -107,7 +128,7 @@ class ReadHandler(BaseHTTPRequestHandler):
                 self.reply(200, body, source['media_type'])
             else:
                 self.reply(404, {'error': 'Läsfunktionen finns inte.'})
-        except (house_context.ContextError, OSError, ValueError, TypeError):
+        except (house_context.ContextError, archive_audit.AuditError, OSError, ValueError, TypeError):
             self.reply(503, {'error': 'Läsunderlaget eller originalfilen kunde inte verifieras.'})
         finally:
             self.service.slot.release()
@@ -134,6 +155,11 @@ def page(service, ticket=None, error=None):
         body += '<div class="card"><h2>Kopiera läsnyckeln</h2><p>Öppna Codex Remote Test, klistra in nyckeln under Home Agent och anslut. Nyckeln visas bara nu. Dela den inte i chatten.</p><textarea readonly rows="7" style="width:100%%">%s</textarea></div>' % html.escape(ticket)
     body += '<form method="post" action="/codex/connect"><input type="hidden" name="csrf" value="%s"><button name="action" value="create">%s</button><p>En ny nyckel ersätter den tidigare. Den gamla slutar fungera.</p><button name="action" value="revoke">Stäng av läsåtkomst</button></form>' % (service.csrf, 'Skapa ny läsnyckel' if enabled else 'Aktivera och skapa läsnyckel')
     body += '<p>Originalen och databasen stannar i Home Agent. Valda filer kan kopieras till Codex-tilläggets arbetsmapp och skickas till AI-modellen när du analyserar dem.</p>'
+    if enabled:
+        body += '<h2>Separat arkivrapport</h2><p>Delar kontrollresultat för alla registrerade original: relativa sökvägar, filnamn, checksummor och kopplade objekts namn/ID. Ger ingen ytterligare filhämtning eller skrivåtkomst.</p>'
+        body += '<p>Status: %s</p>' % ('Delas med Codex' if service.archive_enabled() else 'Delas inte med Codex')
+        body += '<form method="post" action="/codex/connect"><input type="hidden" name="csrf" value="%s"><button name="action" value="%s">%s</button></form>' % (service.csrf, 'archive_off' if service.archive_enabled() else 'archive_on', 'Stäng av delning av arkivrapport' if service.archive_enabled() else 'Dela arkivrapport med Codex')
+    body += '<p><a href="/archive/check">Öppna lokal arkivkontroll</a></p>'
     return ui.shell('Anslut Codex', body, active='more', error=error)
 
 
@@ -157,6 +183,8 @@ def handle_page(handler, service, post=False):
                 ticket = service.create_ticket()
             elif data['action'] == ['revoke']:
                 service.revoke()
+            elif data['action'] in (['archive_on'], ['archive_off']):
+                service.set_archive(data['action'] == ['archive_on'])
             else:
                 raise ValueError('Ogiltig åtgärd.')
         except ValueError as exc:

@@ -13,6 +13,7 @@ import codex_read
 import object_resources
 import source_migration
 import source_migration_ui
+import archive_audit
 import copy
 import hashlib
 import difflib
@@ -668,12 +669,25 @@ class Handler(BaseHTTPRequestHandler):
             body = body.replace(b"</body>", nav + b"</body>", 1)
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        if urlparse(self.path).path == '/archive/check':
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/archive/check':
+            if not CODEX_READ.slot.acquire(blocking=False):
+                self.send_page(ui.shell('Arkivkontroll', '<h1>Arkivkontroll</h1><p>En kontroll eller läsning pågår. Försök igen.</p>'), 503)
+                return
+            try:
+                body, status = archive_audit.page(DB_FILE, SOURCE_DIR, parsed.query)
+                self.send_page(body, status)
+            finally:
+                CODEX_READ.slot.release()
+            return
         if parsed.path == '/sources/import':
             source_migration_ui.handle(self, SOURCE_MIGRATION, DB_FILE, SOURCE_DIR,
                                        DB_FILE.parent / 'source-imports', migration_credentials, uuid7)

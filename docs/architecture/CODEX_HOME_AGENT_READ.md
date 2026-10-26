@@ -52,6 +52,11 @@ Om ett annat runtime-värdnamn används nekas konfigurering i stället för att 
 
 ## Vad kan läsas?
 
+Home Agent 0.8.10 + Codex Remote Test 0.1.7 lägger till
+`home_agent_archive_audit`: [skrivskyddad arkivrapport](ARCHIVE_AUDIT.md), separat
+avstängd tills ägaren aktiverar delning. Detta ger inte utökat filscope till
+`home_agent_source`. Befintlig nyckel och NIBE-läsning behålls.
+
 - `home_agent_index`: namn, typ och permanenta ID:n för navigation. Valfri sökning; högst 200 träffar per svar, med besked om fler träffar finns.
 - `home_agent_nibe`: aktuella lagrade uppgifter om det befintliga NIBE S1255-objektet, explicit kopplad service/underhåll, relationer och Source-ID:n.
 - `home_agent_source`: en uttryckligen NIBE-kopplad PDF, bild eller textfil med verifierad lokal custody och SHA-256, högst 25 MB.

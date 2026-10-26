@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import urllib.error
 from urllib.parse import urlencode
 
 
@@ -65,6 +66,24 @@ def seed():
     ticket = Path('/data/ci-ticket')
     ticket.write_text(ticket_text)
     ticket.chmod(0o600)
+    # Existing NIBE keys do not silently gain archive-report access.
+    config = json.loads(base64.urlsafe_b64decode(ticket_text))
+    request = urllib.request.Request('http://127.0.0.1:8100/v1/archive-audit',
+        headers={'Authorization': 'Bearer ' + config['token']})
+    try:
+        opener.open(request)
+        raise AssertionError('Archive report was enabled without consent')
+    except urllib.error.HTTPError as exc:
+        assert exc.code == 403
+    form = urllib.request.Request('http://127.0.0.1:8099/codex/connect',
+        urlencode({'csrf': csrf, 'action': 'archive_on'}).encode(),
+        headers={'Origin': 'null', 'Content-Type': 'application/x-www-form-urlencoded'})
+    with opener.open(form) as response:
+        assert response.status == 200
+    with opener.open('http://127.0.0.1:8099/archive/check') as response:
+        body = response.read()
+        assert b'ci-manual' in body and b'/data/sources' not in body
+        assert response.headers['Cache-Control'] == 'no-store'
     Path('/data/ci-db-sha').write_text(hashlib.sha256(server.DB_FILE.read_bytes()).hexdigest())
     print('PASS: real setup GET and CSRF-authorized opaque-origin POST create read key; synthetic PDF and PNG seeded')
 
@@ -92,22 +111,29 @@ def verify(reconnect=True):
         {'method': 'notifications/initialized'}, {'id': 2, 'method': 'tools/list'},
         {'id': 3, 'method': 'tools/call', 'params': {'name': 'home_agent_nibe', 'arguments': {}}},
         {'id': 4, 'method': 'tools/call', 'params': {'name': 'home_agent_source', 'arguments': {'source_id': 'ci-manual'}}},
-        {'id': 5, 'method': 'tools/call', 'params': {'name': 'home_agent_source', 'arguments': {'source_id': 'ci-photo'}}}]
+        {'id': 5, 'method': 'tools/call', 'params': {'name': 'home_agent_source', 'arguments': {'source_id': 'ci-photo'}}},
+        {'id': 6, 'method': 'tools/call', 'params': {'name': 'home_agent_archive_audit', 'arguments': {}}}]
     process = subprocess.run(['python3', '/app/home_agent_mcp.py'], input=''.join(json.dumps({'jsonrpc': '2.0', **m}) + '\n' for m in messages), text=True, capture_output=True, timeout=60, check=True)
     assert ticket not in process.stdout
     responses = {item['id']: item for item in map(json.loads, process.stdout.splitlines())}
-    for ident in (3, 4, 5):
+    for ident in (3, 4, 5, 6):
         assert not responses[ident]['result'].get('isError'), 'MCP read failed: ' + str(ident)
     nibe = json.loads(responses[3]['result']['content'][0]['text'])
     assert nibe['nibe']['records'][0]['stored_fields']['model'] == 'S1255'
     manual = json.loads(responses[4]['result']['content'][0]['text'])
     photo = json.loads(responses[5]['result']['content'][0]['text'])
+    audit = json.loads(responses[6]['result']['content'][0]['text'])
+    assert audit['scope'] == 'registered-source-archive' and audit['read_only'] is True
+    assert {s['source_id'] for s in audit['entries']} == {'ci-manual', 'ci-photo'}
+    assert all(s['checksum_check'] == 'matches' for s in audit['entries'])
+    assert all(s['relative_path'] == s['source_id'] for s in audit['entries'])
+    assert all(s['layout_check'] == 'legacy_preserved' for s in audit['entries'])
     text = subprocess.check_output(['pdftotext', manual['local_path'], '-'])
     assert b'CODEX_NIBE_PDF_OK' in text
     assert Path(photo['local_path']).read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
     for source in (manual, photo):
         assert hashlib.sha256(Path(source['local_path']).read_bytes()).hexdigest() == source['sha256']
-    print('PASS: real CLI MCP configuration, Ingress key setup, stdio tools, authenticated read API, verified PDF extraction and image download')
+    print('PASS: real CLI MCP, setup/explicit archive consent, read API, PDF/image download and read-only relative-path archive report')
 
 
 if __name__ == '__main__':

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- Lägg till det fasta läsverktyget home_agent_archive_audit för Home Agents sidindelade arkivrapport, med Source-ID eller sidmarkör och validerat begränsat svar.
+- Kräver Home Agent 0.8.10 och separat aktiverad rapportdelning. Ger ingen ytterligare originalhämtning, produktionsmontering eller skrivbehörighet.
+- Uppgradera endast exakt genererade äldre arbetsinstruktioner; bevara egna instruktioner och befintlig inloggning/läsnyckel. Prova rapporten genom verklig HTTP/MCP i container-CI.
+
 ## 0.1.6
 
 - Lägg till beständigt installerade utvecklingsberoenden: PyYAML, venv och ripgrep, utöver befintliga Git/Python/Node/PDF-verktyg.

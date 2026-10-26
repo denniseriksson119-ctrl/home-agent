@@ -31,7 +31,11 @@ normala Codex-godkännanden; ändra inte systempaket eller körande tillägg.
 ## Läsning av husinformation
 
 Ägaren kan aktivera Home Agent-läsåtkomst på tilläggets sida. Använd då endast
-MCP-verktygen home_agent_index, home_agent_nibe och home_agent_source för husdata.
+MCP-verktygen home_agent_index, home_agent_nibe, home_agent_source och
+home_agent_archive_audit för husdata. Arkivrapporten kräver separat delning i
+Home Agent och visar endast kontrollresultat, relativa sökvägar och kopplingar.
+Följ next_after tills alla sidor kontrollerats. Ej kontrollerad eller okänd betyder
+inte verifierad. Rapporten ger ingen ytterligare åtkomst till originalens innehåll.
 De ger objektindex, NIBE S1255-underlag och uttryckligen kopplade original.
 Använd inte egna HTTP-anrop till Home Agent eller andra LAN-tjänster och försök inte
 läsa databaser, Home Assistant, värden eller andra kataloger. Ingen skrivåtkomst

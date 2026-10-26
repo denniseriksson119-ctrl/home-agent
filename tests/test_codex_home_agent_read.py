@@ -190,7 +190,7 @@ class ReadTests(unittest.TestCase):
         initialized = client.dispatch({'method': 'initialize', 'params': {'protocolVersion': '2025-06-18'}})
         self.assertEqual(initialized['protocolVersion'], '2025-06-18')
         tools = client.dispatch({'method': 'tools/list'})['tools']
-        self.assertEqual({t['name'] for t in tools}, {'home_agent_index', 'home_agent_nibe', 'home_agent_source'})
+        self.assertEqual({t['name'] for t in tools}, {'home_agent_index', 'home_agent_nibe', 'home_agent_source', 'home_agent_archive_audit'})
         for args in ({'url': 'http://other'}, {'source_id': 'photo'}):
             with self.assertRaises(client.ReadError):
                 client.call('home_agent_nibe', args, self.config_path, self.workspace)
@@ -264,6 +264,20 @@ class ReadTests(unittest.TestCase):
 
 
 class MigrationTests(unittest.TestCase):
+    def test_development_role_upgrades_archive_instruction_only_for_exact_seed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first = Controller(Path(folder))
+            instructions = first.workspace / 'AGENTS.md'
+            instructions.write_bytes((ROOT / 'codex_remote_test/app/seed/AGENTS.development-0.1.6.md').read_bytes())
+            first.close()
+            second = Controller(Path(folder))
+            self.assertIn('home_agent_archive_audit', instructions.read_text())
+            instructions.write_text('owner custom instructions')
+            second.close()
+            third = Controller(Path(folder))
+            self.assertEqual(instructions.read_text(), 'owner custom instructions')
+            third.close()
+
     def test_read_only_role_upgrade_preserves_custom_guide_project_and_read_key(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

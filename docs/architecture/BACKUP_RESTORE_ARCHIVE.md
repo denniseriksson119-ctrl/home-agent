@@ -95,6 +95,10 @@ Archive operations record external storage references and verification state loc
 
 ### Local original archive (0.8.9)
 
+The [read-only archive report](ARCHIVE_AUDIT.md), introduced in 0.8.10, checks
+registered local originals against this local layout without moving/renaming
+files or claiming that the broader date/description-based Drive naming is done.
+
 New originals from the explicit legacy import use stable coarse directories
 inside the managed local Source store: `Photos`, `Documents/Manuals`,
 `Documents/Invoices`, and `Documents/Other`. A full Source-ID prefix plus a
