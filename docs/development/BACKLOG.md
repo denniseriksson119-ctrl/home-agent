@@ -81,7 +81,10 @@ See [DD-044](../decisions/DECISIONS.md) and [phone installation/test guide](../.
 
 Ägarprovet i 0.8.7 stoppades vid nyckelskapandet av formulärets origin-kontroll.
 0.8.8 hanterar giltiga CSRF-skyddade formulär med opaque/saknad origin och testar
-det verkliga formulärflödet i containerprovet. Nytt telefonprov återstår.
+det verkliga formulärflödet i containerprovet. Ägaren har därefter verifierat
+nyckelanslutning och läsning av lagrade NIBE-uppgifter. Källistan var tom;
+äldre original/kopplingar behöver inventeras och migreras. Verklig PDF-/bildläsning
+av dessa original återstår; tom källista ska inte tolkas som trasig lästransport.
 
 - Behåll separata tillägg. Inga produktionsvolymer eller nya host-portar till Codex.
 - Läsnyckel från telefonen, aktuellt begränsat underlag, fasta MCP-verktyg och SHA-256-verifierade explicit kopplade original.
@@ -89,3 +92,18 @@ det verkliga formulärflödet i containerprovet. Nytt telefonprov återstår.
 - Nästa steg är validerad förslagsimport och granskning. Backup/återställning planeras separat enligt BL-DRIVE-002/003 och backupkontraktet.
 
 Se [arkitektur och telefonprov](../architecture/CODEX_HOME_AGENT_READ.md).
+
+## BL-CODEX-003 — Utveckling i Pi-sessionen
+
+**Prioritet:** Godkänd av ägaren 2026-10-26. **Status:** Codex Remote Test 0.1.6
+förbereder testberoenden, kodsökning, beständigt projektdir och utvecklingsroll.
+GitHub-/Drive-åtkomst i Pi-sessionen är verifierad av ägaren. Verklig projekt-
+och PR-/CI-verifiering efter installation återstår.
+
+- Hämta källkod till separat arbetsmapp, läs projektets roll/specifikationer och kör tester.
+- Behåll inloggning, läsnyckel, egna instruktioner och arbetsfiler. Ingen ny host-/HA-behörighet.
+- Följ branch → test → PR → CI → ägarens merge/installation. Ingen automatisk datamigration.
+- Nästa produktuppgift: inventera äldre register/original och föreslå en ID-bevarande migration genom Home Agent.
+- Tydligare visning av konfigurerad kontra verifierat fungerande läsåtkomst är önskad av ägaren men skjuts upp tills vidare.
+
+Se [utvecklingsguide](CODEX_PI_DEVELOPMENT.md).

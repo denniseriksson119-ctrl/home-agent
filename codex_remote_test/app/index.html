@@ -36,6 +36,11 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <blockquote>Läs README.md i /data/workspace och återge testmarkören. Skapa sedan session-test.txt med en kort anteckning om att anslutningen fungerar.</blockquote>
 <p>Förväntad markör: <code>CODEX_PI_TEST_OK</code>. Starta därefter om tillägget från Home Assistant och försök fortsätta samma konversation. Be Codex läsa <code>session-test.txt</code>.</p>
 <p class="small">Tillägget sparar inloggning, testfiler och Codex-historik i sin egen /data. En tidigare startad fjärrprocess startas igen efter omstart när ChatGPT-inloggningen fortfarande är giltig. Vänta på Ansluten till OpenAI och återvänd sedan till samma konversation i mobilen.</p></section>
+<section><h2>5. Utveckla Home Agent</h2>
+<p>Git, kodsökning och testverktyg ingår. Kodprojekten ligger i en egen mapp och sparas efter omstart. Befintliga GitHub-/Drive-anslutningar används i Codex-konversationen.</p>
+<p>Skicka i din anslutna Codex-konversation:</p>
+<blockquote>Läs /data/workspace/DEVELOPMENT.md, kontrollera utvecklingsverktygen och förbered Home Agents kodprojekt. Läs projektets arbetsinstruktioner och redovisa aktuell revision. Ändra inga husdata.</blockquote>
+<p class="small">Codex kan sedan ändra kod, köra tester och lämna en PR. Du gör merge och installerar uppdateringen i Home Assistant.</p></section>
 <details><summary>Diagnostik utan hemligheter</summary><p id="diagnostics" class="small"></p></details>
 <script nonce="__CSRF__">
 const csrf='__CSRF__';

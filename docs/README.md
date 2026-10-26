@@ -19,6 +19,7 @@ Older imported Drive-era workflow documents are historical/superseded unless an 
 ## Developer collaboration and release checks
 - [Development workflow](development/DEVELOPMENT_WORKFLOW.md)
 - [AI developer handoff](development/AI_DEVELOPER_HANDOFF.md)
+- [Development from the Codex session on Pi (0.1.6)](development/CODEX_PI_DEVELOPMENT.md)
 
 ## Development flow
 **Idea → discussion/prototype → decision → spec/decision update → implementation → test against spec → PR → merge**
@@ -36,5 +37,5 @@ Experimental implementation does not automatically become product policy.
 - [Drive/ChatGPT backlog and next acceptance steps](development/BACKLOG.md)
 - [Existing shared Drive folder, account boundary and storage ownership](architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) — owner clarification 2026-10-19; current exporter still needs adaptation.
 
-## Codex on Home Assistant OS — isolated connection experiment
-- [Codex Remote Test 0.1.5: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — owner confirmed direct Android connection and resumed conversation on Pi with 0.1.3; 0.1.5 adds opt-in Home Agent read tools without production data mounts.
+## Codex on Home Assistant OS — development and bounded house reading
+- [Codex Remote Test 0.1.6: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — persistent development tools and code workspace, alongside opt-in Home Agent read tools without production data mounts.
