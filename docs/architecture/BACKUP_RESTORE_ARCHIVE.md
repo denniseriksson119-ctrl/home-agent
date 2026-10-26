@@ -93,7 +93,7 @@ A Source may relate simultaneously to Room, Asset, System, Project and Event wit
 
 Archive operations record external storage references and verification state locally.
 
-### Local original archive (0.8.9)
+### Historical technical intake layout (0.8.9)
 
 The [read-only archive report](ARCHIVE_AUDIT.md), introduced in 0.8.10, checks
 registered local originals against this local layout without moving/renaming
@@ -110,6 +110,16 @@ bundle is supported when Pi cannot access the older Drive root; its provider
 references are user-supplied provenance, not verified Google authorization.
 See [legacy import](../development/LEGACY_SOURCE_IMPORT.md) for the boundary,
 resume semantics and acceptance checks.
+
+### Reviewed local archive names (0.8.11)
+
+[Reviewed archive naming](REVIEWED_ARCHIVE_NAMES.md) applies date + meaningful
+description + short Source-ID hint after a two-step owner preview/approval.
+Photos use year/month folders; explicitly approved unknown dates use `undated`
+names and `Photos/Undated`. Document categories remain coarse and stable.
+Original bytes, original names, full Source IDs and semantic links are preserved.
+Only storage references and audit change; the old technical intake layout is
+reported separately and no longer described as completed architectural naming.
 
 ## Drive Inbox handoff and cleanup
 Drive Inbox is a temporary ingest/drop zone.

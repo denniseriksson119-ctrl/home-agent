@@ -3,6 +3,12 @@
 Leverans: Home Agent **0.8.10** och Codex Remote Test **0.1.7**.
 Rapporten är en kontrollfunktion, inte en filflytt, import eller backup.
 
+Från Home Agent **0.8.11** använder rapporten `archive-0.8.11` och skiljer
+arkitekturens granskade namn från `technical_preserved` och äldre format.
+[Separat namnförhandsgranskning](REVIEWED_ARCHIVE_NAMES.md) genomför godkända
+namnbyten; själva arkivkontrollen är fortsatt skrivskyddad. Den befintliga
+MCP-transporten i 0.1.7 är kompatibel utan nytt lässcope eller ny nyckel.
+
 ## Lokal användning
 
 Öppna **Mer → Arkivkontroll**. Rapporten visar högst tio registrerade Sources
@@ -26,15 +32,19 @@ därför `expected_size_bytes: null` och `size_check: unknown_no_recorded_size`.
 Den uppmätta storleken får inte beskrivas som en genomförd storleksjämförelse.
 Matchande SHA-256 är en separat kontroll av originalets byte.
 
-`current` betyder att lokal mapp/namnregel följs. `legacy_preserved` betyder
+I rapportversion 0.8.10 betydde `current` att den tekniska lokala mapp/namnregeln
+följdes. Från 0.8.11 kallas detta `technical_preserved`; det är inte ett färdigt
+arkitekturnamn. `architectural` respektive `architectural_undated` anger de nya,
+granskade arkivnamnen. `legacy_preserved` betyder
 bevarad äldre lagring direkt under Source-lagret med Source-ID som filnamn;
 det får inte beskrivas som den nya mappstrukturen. `deviation` markerar andra
 placeringar/namn eller bristande kopplingar. Status måste läsas tillsammans med
 de separata kontrollfälten; en tids-/storleksgräns är inte verifiering.
-Reglerna är `Photos`, `Documents/Manuals`, `Documents/Invoices` och
-`Documents/Other`, med fullt Source-ID + portabelt originalnamn. Datum,
-beskrivande arkivnamn och år/månad-mappar från det övergripande Drive-arkivförslaget
-är inte implementerade genom denna rapport. Inga semantiska kopplingar gissas.
+Den tekniska intagsregeln använde `Photos`, `Documents/Manuals`,
+`Documents/Invoices` och `Documents/Other`, med fullt Source-ID + portabelt
+originalnamn. Från 0.8.11 kontrolleras även datum, beskrivande arkivnamn och
+år/månad-mappar från arkitekturen; namnbytet sker i det separata granskade flödet,
+aldrig genom rapportläsningen. Inga semantiska kopplingar gissas.
 
 ## Begränsat Codex-läsverktyg och explicit delning
 
