@@ -27,7 +27,7 @@ Experimental implementation does not automatically become product policy.
 
 ## Current implementation plan
 - **0.7 — Permanent local data foundation** — `implementation/0.7_PLAN.md`
-- **Primary AI workflow: Codex → Home Agent read tools (Home Agent 0.8.7 + Codex 0.1.5; real house/PDF/image acceptance pending)** — [phone setup, scope and acceptance](architecture/CODEX_HOME_AGENT_READ.md)
+- **Primary AI workflow: Codex → Home Agent read tools (Home Agent 0.8.8 + Codex 0.1.5; real house/PDF/image acceptance pending)** — [phone setup, scope and acceptance](architecture/CODEX_HOME_AGENT_READ.md)
 - **Drive publication for ordinary ChatGPT: paused** — [previous read model](architecture/CHATGPT_DRIVE_READ_MODEL.md). Drive backup/archive remains a separate workstream.
 - **Google Drive connection from a phone (0.8.6; legacy setup, real Google acceptance pending)** — [mobile setup and security boundary](architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md)
 

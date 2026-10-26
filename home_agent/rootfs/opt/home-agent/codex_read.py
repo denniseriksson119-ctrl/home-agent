@@ -141,15 +141,18 @@ def handle_page(handler, service, post=False):
     ticket, error, status = None, None, 200
     if post:
         try:
-            origin = handler.headers.get('Origin')
-            if handler.headers.get('Sec-Fetch-Site') == 'cross-site' or (origin and urlparse(origin).netloc != handler.headers.get('Host')):
-                raise ValueError('Åtgärden måste startas från Home Agent.')
             size = int(handler.headers.get('Content-Length', '0'))
             if not 0 < size <= 256:
                 raise ValueError('Ogiltigt formulär.')
             data = parse_qs(handler.rfile.read(size).decode(), strict_parsing=True)
             if set(data) != {'csrf', 'action'} or any(len(v) != 1 for v in data.values()) or not hmac.compare_digest(data['csrf'][0].encode(), service.csrf.encode()):
                 raise ValueError('Öppna sidan på nytt och försök igen.')
+            # Browsers can send Origin: null for a same-origin HTTP form, notably
+            # with the old no-referrer policy. The valid unpredictable nonce is
+            # mandatory even when origin/fetch metadata is opaque or absent.
+            origin = handler.headers.get('Origin')
+            if handler.headers.get('Sec-Fetch-Site') == 'cross-site' or not same_origin(origin, handler.headers.get('Host', '')):
+                raise ValueError('Åtgärden måste startas från Home Agent.')
             if data['action'] == ['create']:
                 ticket = service.create_ticket()
             elif data['action'] == ['revoke']:
@@ -162,7 +165,23 @@ def handle_page(handler, service, post=False):
             status, error = 503, 'Läsanslutningen kunde inte sparas.'
     body = page(service, ticket, error)
     handler.send_response(status)
-    for key, value in [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', str(len(body))), ('Cache-Control', 'no-store'), ('Referrer-Policy', 'no-referrer'), ('X-Content-Type-Options', 'nosniff'), ('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'")]:
+    for key, value in [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', str(len(body))), ('Cache-Control', 'no-store'), ('Referrer-Policy', 'same-origin'), ('X-Content-Type-Options', 'nosniff'), ('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'self'")]:
         handler.send_header(key, value)
     handler.end_headers()
     handler.wfile.write(body)
+
+
+def same_origin(origin, host):
+    if origin in (None, 'null'):
+        return True  # Only reached after successful CSRF validation.
+    try:
+        source, target = urlparse(origin), urlparse('http://' + host)
+        return (source.scheme == 'http' and source.hostname is not None
+                and source.hostname == target.hostname
+                and (source.port if source.port is not None else 80) == (target.port if target.port is not None else 80)
+                and source.username is None and source.password is None
+                and target.username is None and target.password is None
+                and not source.path and not source.params and not source.query and not source.fragment
+                and not target.path and not target.params and not target.query and not target.fragment)
+    except (ValueError, TypeError, AttributeError):
+        return False

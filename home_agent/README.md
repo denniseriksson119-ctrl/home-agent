@@ -2,6 +2,9 @@
 
 ## Codex read connection (0.8.7)
 
+Use **0.8.8 or later** for phone setup. It fixes rejected read-key forms when
+the browser sends an opaque origin; the CSRF check remains mandatory.
+
 The primary interactive AI path is Codex on Pi through the ChatGPT mobile app.
 Update Codex Remote Test to 0.1.5, then open **Mer → Anslut Codex** in Home Agent
 and copy the dedicated read key into the Codex add-on's setup page. This exposes

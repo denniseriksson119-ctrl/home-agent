@@ -79,6 +79,10 @@ See [DD-044](../decisions/DECISIONS.md) and [phone installation/test guide](../.
 
 **Prioritet:** Aktiv första integration, godkänd av ägaren 2026-10-26. **Status:** Home Agent 0.8.7 + Codex Remote Test 0.1.5 implementerar opt-in läsåtkomst. Riktigt NIBE-/bildprov på Pi återstår.
 
+Ägarprovet i 0.8.7 stoppades vid nyckelskapandet av formulärets origin-kontroll.
+0.8.8 hanterar giltiga CSRF-skyddade formulär med opaque/saknad origin och testar
+det verkliga formulärflödet i containerprovet. Nytt telefonprov återstår.
+
 - Behåll separata tillägg. Inga produktionsvolymer eller nya host-portar till Codex.
 - Läsnyckel från telefonen, aktuellt begränsat underlag, fasta MCP-verktyg och SHA-256-verifierade explicit kopplade original.
 - Verifiera NIBE-frågan med en manual och bild, källhänvisningar, saknade uppgifter, omstart och återkallad nyckel. Mät faktisk svarstid och Pi-minne.

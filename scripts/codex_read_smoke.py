@@ -9,13 +9,13 @@ import subprocess
 import sys
 import time
 import urllib.request
+from urllib.parse import urlencode
 
 
 def seed():
     sys.path.insert(0, '/opt/home-agent')
     import server
     import house_context
-    import codex_read
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     for attempt in range(80):
         try:
@@ -52,12 +52,21 @@ def seed():
             path.write_bytes(body)
             db.execute("INSERT INTO source(source_id,source_type,media_type,original_name,sha256,storage_ref,custody_status) VALUES(?,'file',?,?,?,?, 'local_verified')", (ident, mime, ident, hashlib.sha256(body).hexdigest(), str(path)))
             db.execute('INSERT INTO source_link(source_id,object_id) VALUES(?,?)', (ident, asset))
-    service = codex_read.ReadService(server.DB_FILE, server.SOURCE_DIR)
+    # Exercise the actual setup page/form. A direct create_ticket() call missed
+    # the browser's opaque-origin behavior in the original smoke test.
+    with opener.open('http://127.0.0.1:8099/codex/connect') as response:
+        assert response.headers['Referrer-Policy'] == 'same-origin'
+        csrf = re.search(rb'name="csrf" value="([0-9a-f]{64})"', response.read()).group(1).decode()
+    form = urllib.request.Request('http://127.0.0.1:8099/codex/connect',
+        urlencode({'csrf': csrf, 'action': 'create'}).encode(),
+        headers={'Origin': 'null', 'Content-Type': 'application/x-www-form-urlencoded'})
+    with opener.open(form) as response:
+        ticket_text = re.search(rb'<textarea[^>]*>([^<]+)</textarea>', response.read()).group(1).decode()
     ticket = Path('/data/ci-ticket')
-    ticket.write_text(service.create_ticket())
+    ticket.write_text(ticket_text)
     ticket.chmod(0o600)
     Path('/data/ci-db-sha').write_text(hashlib.sha256(server.DB_FILE.read_bytes()).hexdigest())
-    print('PASS: synthetic house, PDF and PNG seeded; read grant saved privately')
+    print('PASS: real setup GET and CSRF-authorized opaque-origin POST create read key; synthetic PDF and PNG seeded')
 
 
 def verify(reconnect=True):

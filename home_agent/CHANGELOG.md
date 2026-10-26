@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.8
+
+- Rätta formulärkontrollen för Codex-läsnyckeln när en mobilwebbläsare skickar Origin: null. En giltig CSRF-kod krävs alltid; uttryckliga främmande origin och cross-site-anrop nekas fortfarande.
+- Använd Referrer-Policy: same-origin för sidan så att lokal formulärnavigering behåller normalt ursprungsunderlag.
+- Containerprovet skapar nu nyckeln genom en riktig GET och formulär-POST innan MCP-/PDF-/bildprovet körs.
+
 ## 0.8.7
 
 - Opt-in Codex-läsning från den anslutna mobilkonversationen: aktuellt objektindex, begränsade NIBE-uppgifter och uttryckligen kopplade original.

@@ -1,6 +1,6 @@
 # Codex som AI-arbetsyta — första läskopplingen
 
-**Beslutat av ägaren:** 2026-10-26. **Leverans:** Home Agent 0.8.7 + Codex Remote Test 0.1.5.
+**Beslutat av ägaren:** 2026-10-26. **Leverans:** Home Agent 0.8.8 + Codex Remote Test 0.1.5.
 Automatiska tester verifierar mekaniken med syntetiska data. Verkligt NIBE-/bildprov på Pi återstår.
 
 ```mermaid
@@ -27,12 +27,21 @@ Ingen Drive-anslutning krävs för Codex-läsningen.
 
 ## Anslut från telefonen
 
-1. Merga leveransens PR. Uppdatera **både Home Agent till 0.8.7 och Codex Remote Test till 0.1.5**. Befintlig Codex-inloggning och konversation behålls.
+1. Merga leveransens PR. Uppdatera **både Home Agent till 0.8.8 och Codex Remote Test till 0.1.5**. Befintlig Codex-inloggning och konversation behålls.
 2. Öppna Home Agent → **Mer → Anslut Codex**.
 3. Välj **Aktivera och skapa läsnyckel**. Kopiera hela nyckeln. Den visas endast i detta svar och är en hemlig åtkomstnyckel, inte en OpenAI-parkod.
 4. Öppna Codex Remote Tests webbgränssnitt. Klistra in nyckeln under **Home Agent** och tryck **Anslut Home Agent**. Klistra aldrig in den i chatten.
 5. Vänta på **Ansluten till OpenAI** och fortsätt i Codex-konversationen. Be uttryckligen om Home Agent-verktygen vid första provet.
 6. Om en gammal konversation inte visar de nya verktygen, prova en ny Codex-konversation på samma Pi och projektmapp `/data/workspace`.
+
+### Om knappen inte gav någon nyckel i 0.8.7
+
+Meddelandet **Åtgärden måste startas från Home Agent** kunde visas trots att
+knappen användes på rätt sida. Sidans tidigare `no-referrer`-policy kan ge
+`Origin: null` på HTTP-formulär i webbläsaren. Uppdatera **Home Agent till 0.8.8**,
+öppna sidan på nytt via Mer och prova igen. Codex-tillägget ligger kvar på 0.1.5.
+Rättningen kräver fortfarande den oförutsägbara CSRF-koden från den aktuella sidan,
+nekar uttryckliga främmande origin/cross-site-anrop och lämnar inte ut nyckeln via GET.
 
 Home Agent identifierar sitt interna HA-värdnamn, exempelvis `<repo-id>-home-agent`.
 Nyckeln innehåller värdnamn, fast lässcope och en slumpmässig 256-bitars token.
