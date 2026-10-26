@@ -355,7 +355,7 @@ class TransportTests(unittest.TestCase):
                 second.set()
                 stop.set()
             first.set()
-        with patch.object(chatgpt_export, "publish_once", side_effect=publish):
+        with patch.object(chatgpt_export, 'PAUSED_FOR_CODEX', False), patch.object(chatgpt_export, "publish_once", side_effect=publish):
             worker = threading.Thread(target=chatgpt_export.run, args=("unused", "unused", stop))
             worker.start()
             try:

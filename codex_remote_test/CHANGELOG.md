@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+- Opt-in Home Agent-läsverktyg via MCP: objektindex, aktuella NIBE-uppgifter och explicit kopplade original.
+- Klistra in Home Agents läsnyckel på Ingress-sidan; nyckeln verifieras före sparande och visas aldrig i status eller verktygssvar.
+- Hämta SHA-256-verifierade PDF-/bildkopior till arbetsmappen. Lägg till pdftotext/pdftoppm för faktisk PDF-läsning.
+- Behåll befintlig ChatGPT-inloggning och användarfiler; uppgradera endast exakt genererade äldre arbetsinstruktioner.
+- Ingen produktionsvolym, host-port, ändringsfunktion eller betald modell-API-nyckel läggs till. Verkligt hus-/bildprov på Pi återstår.
+
 ## 0.1.4
 
 - Visa att en klar anslutning kan användas för att fortsätta den befintliga Codex-konversationen, även efter omstart.

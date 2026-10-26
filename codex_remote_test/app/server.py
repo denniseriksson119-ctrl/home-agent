@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from controller import Controller, TestError
+import home_agent_mcp
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -53,11 +54,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # JSON + an unguessable custom header prevents cross-site form submissions.
         # Ingress is the authentication boundary; never trust X-Ingress-* alone.
-        if (not self.allowed() or self.path != '/api/action'
+        if (not self.allowed() or self.path not in ('/api/action', '/api/home-agent')
                 or self.headers.get('Content-Type') != 'application/json'
                 or self.headers.get('Sec-Fetch-Site') == 'cross-site'
                 or not hmac.compare_digest(self.headers.get('X-CSRF-Token', '').encode(), self.controller.csrf.encode())):
             self.reply(403, {'error': 'Åtgärden måste startas från tilläggets sida.'})
+            return
+        if self.path == '/api/home-agent':
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+                if not 0 < length <= 2048:
+                    raise ValueError()
+                value = json.loads(self.rfile.read(length))
+                if not isinstance(value, dict) or set(value) != {'ticket'}:
+                    raise ValueError()
+                home_agent_mcp.connect(value['ticket'], self.controller.home / 'home-agent-read.json')
+                self.reply(200, {'connected': True})
+            except home_agent_mcp.ReadError as error:
+                self.reply(400, {'error': str(error)})
+            except Exception:
+                self.reply(400, {'error': 'Läsanslutningen kunde inte sparas. Inget har ändrats i Home Agent.'})
             return
         try:
             length = int(self.headers.get('Content-Length', '0'))

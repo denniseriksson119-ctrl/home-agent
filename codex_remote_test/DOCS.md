@@ -15,8 +15,8 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.4**, och installera eller uppdatera.
-   Detta är en ny app, inte en uppdatering av Home Agent 0.8.6.
+4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.5**, och installera eller uppdatera.
+   Uppdatera även Home Agent till **0.8.7** om du vill använda läskopplingen nedan.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
 
@@ -134,6 +134,20 @@ Detta är ägarens verkliga enhetsprov, separat från CI. Version **0.1.4** för
 texten som tidigare erbjöd parkod även efter en lyckad återanslutning. Pi-belastning,
 andra konton/enheter och koppling till Home Agent-data är inte verifierade av detta prov.
 
+## Home Agent-läsning från 0.1.5
+
+Den tidigare isolerade anslutningen kan nu användas för ägaraktiverad läsåtkomst.
+Öppna **Home Agent → Mer → Anslut Codex**, skapa läsnyckeln och klistra in den i
+Codex Remote Tests sektion **Home Agent**. Ingen ny OpenAI-parkoppling behövs för
+en fungerande mobilanslutning. Se [hela telefonflödet och NIBE-/bildprovet](../docs/architecture/CODEX_HOME_AGENT_READ.md).
+
+MCP-verktygen har objektindex samt begränsade NIBE-detaljer och uttryckligen
+kopplade original. Källor hämtas till den privata arbetsmappen och läses där.
+Inga produktionsvolymer monteras, inga ändringar kan sparas i Home Agent genom
+verktygen och inget Home Assistant-API används. Stäng av läsåtkomsten i Home
+Agent för att neka nya hämtningar; redan hämtade arbetskopior och chattinnehåll
+raderas inte. Drive-publicering är pausad och backup återstår.
+
 ## Stoppa provet
 
 **Stoppa fjärranslutning** stoppar Codex fjärrprocess och stänger av dess automatiska
@@ -153,7 +167,7 @@ under provet. Home Agent fortsätter vara ett separat tillägg.
 - Codex får normal workspace-sandbox och on-request-godkännanden, inga bypass-flaggor.
 - Kontohemligheter ligger hos CLI i privat /data/home/.codex. Inga tokens eller råa providersvar visas i UI/loggar. Kortlivade användar-/parkoder visas bara i den autentiserade setup-sidan.
 - Sessions- och workspace-data innehåller det du ger Codex. Home Assistant-backuper som omfattar tillägget måste därför hanteras som privata, inklusive credentials.
-- Containern har nätåtkomst för OpenAI. Separat container innebär inte att nätåtkomst till alla andra LAN-tjänster är tekniskt spärrad. Inga Home Agent-integrationer är konfigurerade eller godkända genom detta prov.
+- Containern har nätåtkomst för OpenAI. Separat container innebär inte att nätåtkomst till alla andra LAN-tjänster är tekniskt spärrad. Från 0.1.5 kan ägaren aktivera den separat dokumenterade Home Agent-läskopplingen; andra integrationer ingår inte.
 - CI kan verifiera container/CLI och syntetiska flöden. Pi-resurser, sandbox under HA:s AppArmor, verklig OpenAI-inloggning, Android-UI, parkoppling och konversationsåterupptagning kräver detta verkliga prov.
 - CI provar även initialize, statusläsning och nekad parkod mot samma riktiga CLI-server över Unix/WebSocket, utan nätverk eller aktiverad OpenAI-reläanslutning. Det verifierar det lokala protokollet, inte kontots fjärrbehörighet.
 

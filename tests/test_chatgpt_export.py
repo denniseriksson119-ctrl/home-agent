@@ -97,6 +97,9 @@ class FakeDrive:
 
 class ExportTests(unittest.TestCase):
     def setUp(self):
+        guard = patch.object(export, 'PAUSED_FOR_CODEX', False)
+        guard.start()
+        self.addCleanup(guard.stop)
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)

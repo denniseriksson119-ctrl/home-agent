@@ -7,7 +7,7 @@ body{max-width:44rem;margin:auto;padding:20px;line-height:1.55}h1{font-size:1.7r
 section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:16px;margin:16px 0}button,a.link{font:inherit;border-radius:9px;padding:12px 16px;border:0;background:#a8efd0;color:#123126;display:inline-block;margin:6px 8px 6px 0;text-decoration:none;cursor:pointer}button:disabled{opacity:.45;cursor:default}.secondary{background:#3b515d;color:white}code{overflow-wrap:anywhere}.code{display:block;font:700 1.8rem monospace;letter-spacing:.08em;margin:12px 0;user-select:all}#notice{white-space:pre-wrap;border-left:4px solid #a8efd0;padding-left:12px}[hidden]{display:none!important}.small{font-size:.92rem;color:#c3d5d9}
 </style></head><body>
 <h1>Codex på Pi — anslutningsprov</h1>
-<p>Detta tillägg provar en anslutning från ChatGPT-appen till Codex på din Pi. Mobilparkopplingen är experimentell. Det arbetar i en egen testmapp, separat från Home Agent.</p>
+<p>Anslut ChatGPT-appen till Codex på din Pi. Codex har en egen arbetsmapp. Du kan också aktivera begränsad läsåtkomst till Home Agent nedan.</p>
 <p id="status" role="status">Kontrollerar Codex…</p><p id="notice" aria-live="polite"></p>
 <p id="auth-note" aria-live="polite"></p>
 <section><h2>1. ChatGPT-inloggning</h2>
@@ -25,7 +25,13 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <p>Skapa parkod vid första anslutningen, för en ny mobil eller om appen begär ny parkoppling. Öppna då <strong>Remote / Codex</strong> i ChatGPT-appen, välj att lägga till en anslutning och ange parkoden om kodinmatning erbjuds.</p>
 <p class="small">Om appen enbart erbjuder QR-skanning, om Pi:n inte blir valbar eller om en datorapp krävs: stanna där och notera vad som visas. En skapad parkod är inte bevis på att direkt mobilanslutning stöds för ditt konto.</p>
 <button class="secondary" data-action="stop">Stoppa fjärranslutning</button></section>
-<section><h2>3. Prova och starta om</h2>
+<section><h2>3. Home Agent</h2>
+<p>Öppna Home Agent → Mer → Anslut Codex. Aktivera läsåtkomst och kopiera läsnyckeln hit. Klistra inte in nyckeln i en chatt.</p>
+<label for="read-ticket">Home Agent-läsnyckel</label><input id="read-ticket" type="password" autocomplete="off" spellcheck="false" style="box-sizing:border-box;width:100%;padding:12px;font:inherit">
+<button id="connect-read">Anslut Home Agent</button><p id="read-message" role="status"></p>
+<p class="small">Ger objektindex, NIBE S1255-uppgifter och kopplade dokument/bilder. Original hämtas vid behov till arbetsmappen. Ändringsimport och backup är kommande steg.</p>
+<p>Be sedan Codex: ”Använd Home Agent-verktygen. Vad vet Home Agent om min NIBE S1255? Läs en kopplad PDF och en bild. Citera källorna och förklara vad som saknas.”</p></section>
+<section><h2>4. Prova och starta om</h2>
 <p>Välj projektmappen <code>/data/workspace</code> om mobilen frågar efter projekt. Skicka sedan i den anslutna Codex-konversationen:</p>
 <blockquote>Läs README.md i /data/workspace och återge testmarkören. Skapa sedan session-test.txt med en kort anteckning om att anslutningen fungerar.</blockquote>
 <p>Förväntad markör: <code>CODEX_PI_TEST_OK</code>. Starta därefter om tillägget från Home Assistant och försök fortsätta samma konversation. Be Codex läsa <code>session-test.txt</code>.</p>
@@ -34,7 +40,7 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <script nonce="__CSRF__">
 const csrf='__CSRF__';
 const statusNode=document.getElementById('status'), notice=document.getElementById('notice');
-let sending=false, needsAuthCheck=true;
+let sending=false, needsAuthCheck=true, readSending=false;
 async function refresh(){
  try{
   const response=await fetch('api/status',{cache:'no-store'});
@@ -47,6 +53,7 @@ async function refresh(){
   document.getElementById('pair-message').textContent=s.message;
   document.querySelector('button[data-action="pair"]').textContent=s.pair_pending?'Begär parkod…':'Skapa parkod';
   document.getElementById('auth-note').textContent=s.auth_note;
+  if(!readSending)document.getElementById('read-message').textContent=s.home_agent_read?'Läskopplingen är konfigurerad. Åtkomsten kontrolleras vid varje läsning.':'Ingen Home Agent-läsnyckel är sparad.';
   const files={present:'finns',missing:'saknas',unreadable:'kan inte kontrolleras',unexpected_type:'oväntad filtyp'};
   document.getElementById('diagnostics').textContent='Sparad inloggningsfil: '+(files[s.credential_file]||'okänd')+'. Senast kontrollerad: '+(s.auth_checked_at?new Date(s.auth_checked_at*1000).toLocaleString():'ännu inte kontrollerad')+'. Tillägget startade: '+new Date(s.started_at*1000).toLocaleString()+'.';
   notice.textContent=s.message;
@@ -80,6 +87,16 @@ for(const button of document.querySelectorAll('button[data-action]'))button.addE
  }catch{notice.textContent='Åtgärden kunde inte skickas. Öppna tillägget på nytt.';document.getElementById('pair-message').textContent=notice.textContent;}
  finally{sending=false;}
  await refresh();
+});
+document.getElementById('connect-read').addEventListener('click',async()=>{
+ const button=document.getElementById('connect-read'), input=document.getElementById('read-ticket'), message=document.getElementById('read-message');
+ readSending=true;button.disabled=true;message.textContent='Kontrollerar Home Agent…';
+ try{
+  const response=await fetch('api/home-agent',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({ticket:input.value.trim()})});
+  const data=await response.json();
+  message.textContent=response.ok?'Home Agent kan läsas. Fortsätt i Codex-konversationen.':data.error;
+ }catch{message.textContent='Läsanslutningen kunde inte kontrolleras. Försök igen.';}
+ finally{input.value='';button.disabled=false;setTimeout(()=>{readSending=false;},10000);}
 });
 refresh();setInterval(refresh,2000);
 </script></body></html>

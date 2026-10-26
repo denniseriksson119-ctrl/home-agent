@@ -1,5 +1,7 @@
 # ChatGPT Plus via en automatisk Drive-läskopia — första leverans
 
+> **2026-10-26:** Drive-publicering är pausad som AI-huvudspår. Använd [Codex-läskopplingen](CODEX_HOME_AGENT_READ.md). Detta dokument beskriver den tidigare vägen; Drive-backup/arkiv planeras separat.
+
 **Beslut:** Godkänt av ägaren 2026-10-18 ("då kör vi").
 **Version:** Add-on 0.8.5. Ingen databasändring.
 **Status:** Implementerat för kodgranskning. Riktig OAuth, Pi-publicering och läsning i telefonens ChatGPT måste verifieras efter installation.
