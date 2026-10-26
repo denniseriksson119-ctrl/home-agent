@@ -9,10 +9,12 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <h1>Codex på Pi — anslutningsprov</h1>
 <p>Detta tillägg provar en anslutning från ChatGPT-appen till Codex på din Pi. Mobilparkopplingen är experimentell. Det arbetar i en egen testmapp, separat från Home Agent.</p>
 <p id="status" role="status">Kontrollerar Codex…</p><p id="notice" aria-live="polite"></p>
+<p id="auth-note" aria-live="polite"></p>
 <section><h2>1. Logga in med ChatGPT</h2>
 <p>Använd samma ChatGPT-konto som i mobilappen. Detta gäller OpenAI, inte ditt Google-konto. Ingen API-nyckel behövs.</p>
 <p class="small">Aktivera först enhetsinloggning (Device code login) i ChatGPT-kontots säkerhetsinställningar om OpenAI kräver det.</p>
 <button data-action="login">Hämta inloggningskod</button>
+<button class="secondary" data-action="check">Kontrollera sparad inloggning</button>
 <div id="login" hidden><span class="code" id="login-code"></span><a class="link" id="login-link" href="https://auth.openai.com/codex/device" target="_blank" rel="noopener noreferrer">Öppna OpenAI-inloggning</a><p>Återvänd hit när du har godkänt. Sidan kontrollerar resultatet automatiskt.</p></div>
 <button class="secondary" data-action="cancel">Avbryt pågående försök</button></section>
 <section><h2>2. Anslut mobilen</h2>
@@ -26,16 +28,21 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <blockquote>Läs README.md i /data/workspace och återge testmarkören. Skapa sedan session-test.txt med en kort anteckning om att anslutningen fungerar.</blockquote>
 <p>Förväntad markör: <code>CODEX_PI_TEST_OK</code>. Starta därefter om tillägget från Home Assistant och försök fortsätta samma konversation. Be Codex läsa <code>session-test.txt</code>.</p>
 <p class="small">Tillägget sparar inloggning, testfiler och Codex-historik i sin egen /data. En tidigare startad fjärrprocess startas igen efter omstart när ChatGPT-inloggningen fortfarande är giltig. Kopplingen på mobilen behöver verifieras separat.</p></section>
+<details><summary>Diagnostik utan hemligheter</summary><p id="diagnostics" class="small"></p></details>
 <script nonce="__CSRF__">
 const csrf='__CSRF__';
 const statusNode=document.getElementById('status'), notice=document.getElementById('notice');
-let sending=false;
+let sending=false, needsAuthCheck=true;
 async function refresh(){
  try{
   const response=await fetch('api/status',{cache:'no-store'});
   if(!response.ok)throw Error();
   const s=await response.json();
-  statusNode.textContent='Codex '+s.version+' · '+(s.authenticated?'ChatGPT inloggat':'Inte inloggad')+' · '+(s.remote_running?'Fjärrprocess igång':'Fjärrprocess stoppad');
+  const labels={checking:'Kontrollerar inloggning…',signing_in:'Inloggning pågår',signed_in:'ChatGPT inloggat',signed_out:'Inte inloggad',error:'Inloggningsstatus okänd',wrong_method:'Annan inloggningsmetod'};
+  statusNode.textContent='Codex '+s.version+' · '+(labels[s.auth_state]||'Inloggningsstatus okänd')+' · '+(s.remote_running?'Fjärrprocess igång':'Fjärrprocess stoppad');
+  document.getElementById('auth-note').textContent=s.auth_note;
+  const files={present:'finns',missing:'saknas',unreadable:'kan inte kontrolleras',unexpected_type:'oväntad filtyp'};
+  document.getElementById('diagnostics').textContent='Sparad inloggningsfil: '+(files[s.credential_file]||'okänd')+'. Senast kontrollerad: '+(s.auth_checked_at?new Date(s.auth_checked_at*1000).toLocaleString():'ännu inte kontrollerad')+'. Tillägget startade: '+new Date(s.started_at*1000).toLocaleString()+'.';
   notice.textContent=s.message;
   document.getElementById('login').hidden=!s.login_code;
   document.getElementById('login-code').textContent=s.login_code||'';
@@ -45,10 +52,15 @@ async function refresh(){
   for(const button of document.querySelectorAll('button[data-action]')){
    const a=button.dataset.action;
    button.disabled=sending||!s.supported||
-    (a==='login'&&(s.busy||s.remote_running))||
+    (a==='login'&&(s.busy||s.remote_running||s.auth_state!=='signed_out'))||
+    (a==='check'&&s.busy)||
     (a==='start'&&(!s.authenticated||s.busy||s.remote_running))||
     (a==='pair'&&(!s.authenticated||!s.remote_running||s.busy))||
-    (a==='cancel'&&!s.busy)||(a==='stop'&&!s.remote_running&&!s.remote_enabled);
+    (a==='cancel'&&!s.operation_active)||(a==='stop'&&!s.remote_running&&!s.remote_enabled);
+  }
+  if(needsAuthCheck&&s.supported&&!s.busy&&!sending){
+   needsAuthCheck=false;
+   await fetch('api/action',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({action:'check'})});
   }
  }catch{notice.textContent='Tillägget kunde inte nås. Öppna det på nytt från Home Assistant efter omstart.';}
 }

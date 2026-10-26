@@ -65,7 +65,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError()
             value = json.loads(self.rfile.read(length))
             if (not isinstance(value, dict) or set(value) != {'action'} or
-                    value['action'] not in ('login', 'cancel', 'start', 'stop', 'pair')):
+                    value['action'] not in ('login', 'cancel', 'start', 'stop', 'pair', 'check')):
                 raise ValueError()
         except (ValueError, TypeError):
             self.reply(400, {'error': 'Ogiltig åtgärd.'})
