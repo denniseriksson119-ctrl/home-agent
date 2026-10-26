@@ -148,3 +148,10 @@ Feature implementation should remain frozen at the current stable application ba
 ## Asset page: linked images and documents (first delivery)
 
 An Asset has one canonical detail page, reachable initially from **Utrustning** and later via Room/System navigation. Display a lead image and up to four thumbnails when images exist, plus a complete **Bilder & dokument** list. Images/PDFs open from verified local Source custody. Explicit manual upload or linking of an existing Source is supported without AI; source originals and names are preserved. Relationships use permanent Asset and Source IDs, not paths or filename matching. A Source may be linked to multiple assets without copying bytes. The first delivery does not infer Room/System membership or import Drive automatically.
+
+In 0.8.9 **Mer → Dokument & objekt** provides permanent-ID detail pages for
+documents, systems and other registered objects, with verified linked originals.
+Room-related documents/equipment/systems link to these pages, and explicit room
+Source links are also listed directly. **Mer → Överför äldre original** offers
+an unselected per-file preview and explicit start/pause/resume of a private
+legacy-original plan. It does not infer new memberships or run at installation.

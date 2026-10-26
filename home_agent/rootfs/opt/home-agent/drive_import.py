@@ -59,6 +59,7 @@ def download_original(file_id, token, destination, max_bytes=MAX_FILE_BYTES):
     directory.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=".drive-", dir=str(directory))
     digest = hashlib.sha256()
+    provider_digest = hashlib.md5(usedforsecurity=False)
     total = 0
     try:
         with os.fdopen(fd, "wb") as out:
@@ -72,11 +73,14 @@ def download_original(file_id, token, destination, max_bytes=MAX_FILE_BYTES):
                     if total > max_bytes:
                         raise DriveImportError("Drive download exceeds import size limit")
                     digest.update(block)
+                    provider_digest.update(block)
                     out.write(block)
             out.flush()
             os.fsync(out.fileno())
         if declared is not None and total != int(declared):
             raise DriveImportError("Incomplete Drive download")
+        if info.get('md5Checksum') and provider_digest.hexdigest() != info['md5Checksum']:
+            raise DriveImportError('Drive original checksum mismatch')
         return {"temporary_path": temporary, "sha256": digest.hexdigest(),
                 "size": total, "drive_id": info["id"], "original_name": info["name"],
                 "media_type": info.get("mimeType", "application/octet-stream")}
