@@ -8,7 +8,8 @@ import stat
 import sys
 import tempfile
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlencode
 
 CONFIG = Path('/data/home/home-agent-read.json')
 WORKSPACE = Path('/data/workspace')
@@ -87,6 +88,42 @@ def context(config):
         raise ReadError('Home Agent gav inget giltigt läsunderlag.') from None
 
 
+def archive_report(config, arguments):
+    if len(arguments) > 1 or any(not isinstance(v, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', v) for v in arguments.values()):
+        raise ReadError('Ange ett Source-ID eller en sidmarkör.')
+    suffix = '?' + urlencode(arguments) if arguments else ''
+    try:
+        raw, mime = fetch(config, '/v1/archive-audit' + suffix, MAX_CONTEXT)
+        value = json.loads(raw)
+        keys = {'contract_version', 'scope', 'rules_version', 'checked_at', 'revision', 'total_sources',
+                'entries', 'next_after', 'coverage', 'read_only'}
+        if (mime != 'application/json' or set(value) != keys or value['contract_version'] != '1'
+                or value['scope'] != 'registered-source-archive' or value['read_only'] is not True
+                or value['coverage'] != 'registered_sources_only'
+                or not isinstance(value['checked_at'], str) or not re.fullmatch(r'[0-9a-f]{64}', value['revision'])
+                or not isinstance(value['entries'], list) or len(value['entries']) > 10
+                or not isinstance(value['total_sources'], int) or not 0 <= value['total_sources'] <= 2000
+                or (value['next_after'] is not None and not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', value['next_after']))):
+            raise ValueError()
+        entry_keys = {'source_id', 'original_name', 'media_type', 'custody_check', 'expected_sha256',
+            'relative_path', 'size_bytes', 'expected_size_bytes', 'size_check', 'checksum_check', 'file_check',
+            'layout_check', 'name_check', 'expected_directories', 'links', 'link_count', 'links_truncated', 'links_check', 'status'}
+        for entry in value['entries']:
+            if (not isinstance(entry, dict) or set(entry) != entry_keys
+                    or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', entry['source_id'])
+                    or not isinstance(entry['links'], list) or len(entry['links']) > 100):
+                raise ValueError()
+            path = entry['relative_path']
+            if path is not None and (not isinstance(path, str) or PurePosixPath(path).is_absolute()
+                                     or '..' in PurePosixPath(path).parts or '\\' in path):
+                raise ValueError()
+            if any(not isinstance(link, dict) or set(link) != {'id', 'type', 'name', 'exists'} for link in entry['links']):
+                raise ValueError()
+        return value
+    except Exception:
+        raise ReadError('Arkivrapporten kunde inte läsas. Aktivera separat delning under Home Agent → Mer → Anslut Codex och kontrollera versionerna.') from None
+
+
 def connect(ticket, config_path=CONFIG):
     config = ticket_config(ticket)
     context(config)  # Do not replace a working connection with an unverified key.
@@ -139,7 +176,10 @@ TOOLS = [
     {'name': 'home_agent_nibe', 'description': 'Hämta aktuella lagrade NIBE S1255-uppgifter, explicita relationer och Source-ID för dokument/bilder. Saknade fakta är okända; inga livevärden eller skrivningar.',
      'inputSchema': {'type': 'object', 'properties': {}, 'additionalProperties': False}},
     {'name': 'home_agent_source', 'description': 'Hämta ett uttryckligen NIBE-kopplat original till arbetsmappen, verifierat med SHA-256. Läs sedan bilden eller PDF:en. Ger ingen åtkomst till okopplad Inbox.',
-     'inputSchema': {'type': 'object', 'properties': {'source_id': {'type': 'string'}}, 'required': ['source_id'], 'additionalProperties': False}}
+     'inputSchema': {'type': 'object', 'properties': {'source_id': {'type': 'string'}}, 'required': ['source_id'], 'additionalProperties': False}},
+    {'name': 'home_agent_archive_audit', 'description': 'Skrivskyddad, sidindelad kontrollrapport för registrerade original. Kräver separat delning i Home Agent. Visar relativa sökvägar, checksumme-/namnkontroll och explicita kopplingar; ingen ytterligare filåtkomst. Ange högst ett av source_id eller after. Följ next_after för fler sidor. Okänd eller ej kontrollerad betyder inte verifierad.',
+     'inputSchema': {'type': 'object', 'properties': {'source_id': {'type': 'string', 'maxLength': 100},
+                      'after': {'type': 'string', 'maxLength': 100}}, 'additionalProperties': False}}
 ]
 for tool in TOOLS:
     tool['annotations'] = {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False}
@@ -150,10 +190,13 @@ def call(name, arguments, config_path=CONFIG, workspace=WORKSPACE):
         raise ReadError('Ogiltiga verktygsargument.')
     if name not in {t['name'] for t in TOOLS}:
         raise ReadError('Okänd läsfunktion.')
-    allowed = {'home_agent_index': {'query'}, 'home_agent_nibe': set(), 'home_agent_source': {'source_id'}}[name]
+    allowed = {'home_agent_index': {'query'}, 'home_agent_nibe': set(), 'home_agent_source': {'source_id'},
+               'home_agent_archive_audit': {'source_id', 'after'}}[name]
     if set(arguments) - allowed:
         raise ReadError('Otillåtna verktygsargument.')
     config = load_config(config_path)
+    if name == 'home_agent_archive_audit':
+        return archive_report(config, arguments)
     if name == 'home_agent_source':
         return download(config, arguments.get('source_id'), workspace)
     value = context(config)
@@ -177,7 +220,7 @@ def dispatch(message):
         versions = {'2024-11-05', '2025-03-26', '2025-06-18'}
         version = params.get('protocolVersion')
         return {'protocolVersion': version if version in versions else '2024-11-05',
-                'capabilities': {'tools': {}}, 'serverInfo': {'name': 'home-agent-read', 'version': '0.1.6'}}
+                'capabilities': {'tools': {}}, 'serverInfo': {'name': 'home-agent-read', 'version': '0.1.7'}}
     if method == 'ping':
         return {}
     if method == 'tools/list':

@@ -146,6 +146,7 @@ def search_page():
 
 def more_page(export_status=None):
     body = "<h1>Mer</h1><p class='sub'>Fler vyer och verktyg.</p>"
+    body += card_link('/archive/check', '✓', 'Arkivkontroll', 'Verifiera original, sökvägar och kopplingar')
     body += card_link('/objects', '📄', 'Dokument & objekt', 'Öppna kopplade lokala original')
     body += card_link('/sources/import', '📂', 'Överför äldre original', 'Förhandsgranska och kopiera från Drive')
     body += card_link('/codex/connect', '✦', 'Anslut Codex', 'Läs husinformation, dokument och bilder från mobilen')

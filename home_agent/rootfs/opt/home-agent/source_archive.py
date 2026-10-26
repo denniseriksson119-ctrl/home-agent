@@ -24,20 +24,26 @@ def verified_path(storage, root, digest):
     return path
 
 
+def category(media, kind=''):
+    if media.startswith('image/'):
+        return 'Photos'
+    elif 'manual' in kind:
+        return 'Documents/Manuals'
+    elif 'invoice' in kind:
+        return 'Documents/Invoices'
+    return 'Documents/Other'
+
+
+def portable_name(name):
+    # A bounded, portable name. No untrusted separators or path components.
+    return re.sub(r'[^A-Za-z0-9._-]+', '_', Path(name).name).strip('._')[:100] or 'original'
+
+
 def destination(root, source_id, name, media, kind=''):
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', source_id):
         raise ValueError('Ogiltigt Source-ID.')
-    if media.startswith('image/'):
-        category = 'Photos'
-    elif 'manual' in kind:
-        category = 'Documents/Manuals'
-    elif 'invoice' in kind:
-        category = 'Documents/Invoices'
-    else:
-        category = 'Documents/Other'
-    # A bounded, portable name. No untrusted separators or path components.
-    label = re.sub(r'[^A-Za-z0-9._-]+', '_', Path(name).name).strip('._')[:100] or 'original'
-    directory = Path(root) / category
+    label = portable_name(name)
+    directory = Path(root) / category(media, kind)
     directory.mkdir(parents=True, exist_ok=True)
     if not directory.resolve().is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('Ogiltig arkivkatalog.')

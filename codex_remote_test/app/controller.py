@@ -125,7 +125,7 @@ class Controller:
         # Upgrade only exact generated instructions. Preserve custom owner edits.
         agent_file = self.workspace / 'AGENTS.md'
         if agent_file.read_bytes() in [(seed / name).read_bytes() for name in
-                                      ('AGENTS.connection-test.md', 'AGENTS.read-only.md')]:
+                                      ('AGENTS.connection-test.md', 'AGENTS.read-only.md', 'AGENTS.development-0.1.6.md')]:
             agent_file.write_bytes((seed / 'AGENTS.md').read_bytes())
         if self.state_file.exists() or self.state_file.is_symlink():
             info = self.state_file.lstat()

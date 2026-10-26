@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.10
+
+- Lägg till skrivskyddad Arkivkontroll under Mer: relativa sökvägar, fil-/SHA-256-kontroll, lokal mapp-/namnregel och explicita kopplingar.
+- Sidindela och begränsa hashningen; markera äldre lagring, avvikelser, saknad referensstorlek och sådant som inte kunnat verifieras. Inga original flyttas eller ändras.
+- Separat avstängd rapportdelning till Codex; befintlig NIBE-filåtkomst utökas inte. Kräver Codex Remote Test 0.1.7 för det nya verktyget.
+
 ## 0.8.9
 
 - Förhandsgranska och överför äldre dokumentoriginal till lokala arkivmappar, via privat ZIP-paket eller befintlig verifierad Drive-import.

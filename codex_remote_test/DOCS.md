@@ -15,7 +15,7 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.6**, och installera eller uppdatera.
+4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.7**, och installera eller uppdatera.
    Uppdatera även Home Agent till **0.8.8** om du vill använda läskopplingen nedan.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.

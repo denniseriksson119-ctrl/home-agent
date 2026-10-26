@@ -17,6 +17,7 @@ This directory contains the normative design and engineering documentation for H
 Older imported Drive-era workflow documents are historical/superseded unless an active specification explicitly references a still-valid rule. They do not override the local-first architecture, data model or processing workflow.
 
 ## Developer collaboration and release checks
+- [Read-only archive verification and explicit Codex report sharing](architecture/ARCHIVE_AUDIT.md)
 - [Legacy originals: preview, transfer and Pi verification](development/LEGACY_SOURCE_IMPORT.md)
 - [Development workflow](development/DEVELOPMENT_WORKFLOW.md)
 - [AI developer handoff](development/AI_DEVELOPER_HANDOFF.md)
