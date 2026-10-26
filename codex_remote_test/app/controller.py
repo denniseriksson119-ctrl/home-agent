@@ -431,7 +431,7 @@ class Controller:
                         return
                     self.remote_status = status
                     if status == 'connected':
-                        self.remote_note = 'Ansluten till OpenAI. Du kan nu skapa parkod.'
+                        self.remote_note = 'Anslutningen är klar. Fortsätt i din befintliga Codex-konversation i ChatGPT-appen. Vid första anslutningen: skapa en parkod nedan.'
                         if self.message == 'Codex-servern startar. Vänta på Ansluten till OpenAI.':
                             self.message = self.remote_note
                     elif status == 'connecting':

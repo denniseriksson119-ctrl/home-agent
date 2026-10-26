@@ -65,12 +65,12 @@ Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedd
 
 ## BL-CODEX-001 — Codex session on Pi from the ChatGPT mobile app
 
-**Priority:** Isolated connection experiment requested by owner. **Status:** Installation and cached ChatGPT login confirmed on Pi, including the 0.1.2 status screen. Pairing fails. Source review identified that the old pairing command targets the daemon rather than the supervised foreground server. 0.1.3 uses the same private app-server Unix socket for enable/status/pairing and gates pairing on actual connected status. Real OpenAI/Android pairing remains unverified.
+**Priority:** Isolated connection experiment requested by owner. **Status:** Connection acceptance passed on the owner's Pi/Android with 0.1.3, reported 2026-10-26. Owner confirmed direct mobile connection, README marker, file write/read and continuation in the same conversation after add-on restart. Saved ChatGPT login and OpenAI connection are shown after restart. 0.1.4 clarifies that returning users can continue their existing conversation; a fresh pairing code is normally unnecessary.
 
 - Separate Codex Remote Test 0.1.0, pinned CLI 0.164.0, Ingress setup and synthetic workspace.
 - Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account, checking the actual Unix/WebSocket initialize, status and pairing RPCs on one server offline.
-- Owner acceptance: install on Home Assistant OS, complete ChatGPT device login, actually pair Android, read the test marker, create a synthetic note and resume the same conversation after add-on restart.
-- If the Android UI lacks manual code entry or the service requires a desktop host, the direct connection remains unverified/blocked. A generated code alone is not acceptance.
+- Owner acceptance completed for the connection experiment: actual Android pairing, **CODEX_PI_TEST_OK**, **session-test.txt** containing **Mobilanslutningen fungerar**, and continued conversation/file read after restart. See the dated owner-test record in the guide; this is not an automated CI claim.
+- Pi resource usage and other accounts/devices remain unmeasured. Plan any Home Agent integration separately; successful test-workspace access does not grant production data access.
 - No production Home Agent data access or AI-import integration is authorized by this test. No dependency on the unfinished Drive workstream.
 
 See [DD-044](../decisions/DECISIONS.md) and [phone installation/test guide](../../codex_remote_test/DOCS.md).

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+- Visa att en klar anslutning kan användas för att fortsätta den befintliga Codex-konversationen, även efter omstart.
+- Förtydliga att parkod behövs vid första anslutningen, för en ny mobil eller när appen begär ny parkoppling.
+- Dokumentera ägarens lyckade Pi-/Android-prov med 0.1.3: testmarkör, filskrivning/läsning och fortsatt konversation efter omstart.
+
 ## 0.1.3
 
 - Begär parkod från samma Codex app-server som fjärranslutningen använder. Tidigare startades en förgrundsprocess medan parkodskommandot sökte en separat bakgrundsserver.

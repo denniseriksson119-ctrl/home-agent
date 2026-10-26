@@ -36,4 +36,4 @@ Experimental implementation does not automatically become product policy.
 - [Existing shared Drive folder, account boundary and storage ownership](architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) — owner clarification 2026-10-19; current exporter still needs adaptation.
 
 ## Codex on Home Assistant OS — isolated connection experiment
-- [Codex Remote Test 0.1.3: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — saved-auth protection plus pairing and relay status on the same private Codex app-server; actual OpenAI/Android pairing and Pi acceptance pending. Independent of Home Agent 0.8.6 and the Drive workstream.
+- [Codex Remote Test 0.1.4: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — owner confirmed direct Android connection, file read/write and resumed conversation after restart on Pi with 0.1.3; 0.1.4 clarifies returning-user guidance. Independent of Home Agent 0.8.6 and the Drive workstream.

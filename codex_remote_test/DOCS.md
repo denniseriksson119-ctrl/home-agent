@@ -15,7 +15,7 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.3**, och installera eller uppdatera.
+4. Leta efter det separata tillägget **Codex Remote Test**, version **0.1.4**, och installera eller uppdatera.
    Detta är en ny app, inte en uppdatering av Home Agent 0.8.6.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
@@ -64,6 +64,12 @@ Avbrytning stoppar försöket men återkallar inte credentials som OpenAI redan 
 
 ## 2. Prova parkoppling
 
+Om mobilen redan är ansluten: vänta på **Ansluten till OpenAI** och fortsätt i din
+befintliga Codex-konversation i ChatGPT-appen. Efter omstart behövs normalt ingen
+ny parkod. Skapa parkod vid första anslutningen, för en ny mobil eller när appen
+begär ny parkoppling. Tilläggets status visar serverns anslutning till OpenAI;
+den avgör inte om en viss mobil redan är parkopplad.
+
 1. Tryck **Starta fjärranslutning** om den inte redan startats automatiskt. Vänta tills status säger **Ansluten till OpenAI**. En startad process räcker inte; knappen för parkod aktiveras när anslutningen är klar.
 2. Tryck **Skapa parkod**. En tidsbegränsad manuell kod visas om CLI/konto stöder detta.
 3. Öppna ChatGPT-appens **Remote / Codex**, välj att lägga till en anslutning och
@@ -82,7 +88,8 @@ anslutningen visar fel: stoppa och starta fjärranslutningen igen. En parkod som
 inte kan skapas är inte i sig bevis för att kontot saknar stöd; starta ingen ny
 enhetsinloggning enbart på grund av ett sådant fel.
 
-**Viktig provgräns:** Den offentliga mobilguiden beskriver fortfarande parkoppling via
+**Viktig provgräns:** Direkt Android-anslutning har fungerat i ägarens prov nedan.
+Den offentliga mobilguiden beskriver fortfarande parkoppling via
 en Mac-/Windows-app. Codex fjärrprotokoll och manuella parkoder är experimentella.
 Om mobilen bara erbjuder QR-skanning, kräver en datorapp eller inte visar enheten:
 stanna där och rapportera exakt vad som visas. En igångvarande process och skapad
@@ -111,6 +118,21 @@ Godkänt resultat:
 En ny parkod kan behövas om OpenAI återkallat anslutningen. UI-koder sparas inte
 över omstart; de är kortlivade. Inloggning, CLI-historik och testfiler finns i
 tilläggets egen **/data** tills tilläggets data tas bort.
+
+## Genomfört ägarprov — 2026-10-26
+
+Med version **0.1.3** på sin Pi med Home Assistant OS och ChatGPT-appen på Android
+har ägaren bekräftat följande i denna utvecklingskonversation:
+
+- Direkt mobilanslutning till Codex på Pi:n.
+- Avläsning av **CODEX_PI_TEST_OK** från testmappens README.
+- Skapande och återläsning av **/data/workspace/session-test.txt**, med innehållet **Mobilanslutningen fungerar**.
+- Fortsättning i samma konversation och läsning av den sparade filen efter omstart av tillägget.
+- Statussidan visar sparad ChatGPT-inloggning och **Ansluten till OpenAI** efter omstart.
+
+Detta är ägarens verkliga enhetsprov, separat från CI. Version **0.1.4** förtydligar
+texten som tidigare erbjöd parkod även efter en lyckad återanslutning. Pi-belastning,
+andra konton/enheter och koppling till Home Agent-data är inte verifierade av detta prov.
 
 ## Stoppa provet
 
