@@ -15,7 +15,7 @@ Cloud-/Drive-inställning hör till detta anslutningsprov.
 1. Merga PR:n som lägger till **Codex Remote Test** i GitHub.
 2. I Home Assistant: **Inställningar → Appar/Tillägg → Installera app/Tilläggsbutik**.
 3. Välj menyn **⋮ → Sök efter uppdateringar/Check for updates** om det behövs.
-4. Leta efter det nya separata tillägget **Codex Remote Test**, version **0.1.1**, och installera.
+4. Leta efter det nya separata tillägget **Codex Remote Test**, version **0.1.2**, och installera.
    Detta är en ny app, inte en uppdatering av Home Agent 0.8.6.
 5. Starta tillägget och tryck **Öppna webbgränssnitt**. Ingen port ska konfigureras eller öppnas i routern.
 6. Vänta tills sidan visar **Codex 0.164.0**. Inga optionsfält behöver fyllas i.
@@ -37,11 +37,26 @@ installera igen. Om tillägget redan är installerat väljer du uppdatering till
 
 ## 1. Logga in
 
-1. Tryck **Hämta inloggningskod**.
-2. Anteckna/kopiera koden som visas och tryck **Öppna OpenAI-inloggning**.
-3. Logga in med **samma ChatGPT-konto och workspace som i mobilappen**, ange koden och godkänn.
+1. Vänta på kontrollen av sparad inloggning. Om **ChatGPT inloggat** visas: gå direkt till steg 2, Anslut mobilen. Starta inte en ny inloggning.
+2. Om **Inloggningsstatus okänd** visas: tryck **Kontrollera sparad inloggning**. Ett kontrollfel betyder inte att credentials saknas. Under **Diagnostik utan hemligheter** visas om inloggningsfilen finns, senaste kontroll och när tillägget startade; inga filinnehåll eller tokens visas.
+3. Endast när **Inte inloggad** visas: tryck **Hämta inloggningskod**.
+4. Anteckna/kopiera koden som visas och tryck **Öppna OpenAI-inloggning**.
+5. Logga in med **samma ChatGPT-konto och workspace som i mobilappen**, ange koden och godkänn.
    Detta är inte ditt Google-/Drive-konto.
-4. Återvänd till Home Assistant-sidan. Den ska visa **ChatGPT inloggat**.
+6. Återvänd till Home Assistant-sidan. Den ska visa **ChatGPT inloggat**.
+
+Från 0.1.2 kontrolleras sparad auth även när sidan öppnas på nytt. UI och backend
+spärrar ny enhetsinloggning när en sparad ChatGPT-inloggning hittas, också om
+webbsidans tidigare status var gammal. Codex 0.164.0 rensar/revokerar befintlig
+auth innan en ny device-login startas; därför får knappen inte användas som en
+statuskontroll. Funktionen **Kontrollera sparad inloggning** startar ingen sådan
+inloggning och visar aldrig råa CLI-utdata. Kontrollen visar vad CLI:n hittar i
+sin credential-cache, inte att OpenAI precis har godkänt ett modell-/fjärranrop.
+
+Vid uppdatering från 0.1.1: installera 0.1.2, öppna sidan och kontrollera sparad
+inloggning först. Uppdateringen skriver inte över auth.json eller testfiler.
+Om credentials redan hunnit rensas av ett tidigare nytt inloggningsförsök kan
+de inte återskapas av uppdateringen; då behövs en ny inloggning efter kontrollen.
 
 Om OpenAI begär att enhetsinloggning ska aktiveras: följ kontots säkerhetsinställningar
 och försök igen. Om en kod hinner gå ut: avbryt försöket och hämta en ny.

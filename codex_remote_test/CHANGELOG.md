@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- Läs om sparad inloggning vid sidöppning och via knappen Kontrollera sparad inloggning.
+- Skilj kontrollfel/okänd status från faktiskt utloggad; visa enbart säker diagnostik om filens existens och kontrolltid.
+- Spärra ny enhetsinloggning när en ChatGPT-inloggning redan finns. Kontrollera också omedelbart före start, eftersom CLI:n rensar gammal auth när en ny inloggning startas.
+- Tvinga samma filbaserade credentials-store och ChatGPT-metod för alla CLI-anrop utan att skriva över befintliga credentials.
+- Tester för sparad inloggning, siduppdatering, sena svar och fel; CI återläser en syntetisk auth-cache med riktig CLI före/efter containeromstart utan nätåtkomst.
+
 ## 0.1.1
 
 - Lås Debian/Node-basen i Dockerfile så att Supervisors BUILD_FROM-argument inte kan välja Alpine.

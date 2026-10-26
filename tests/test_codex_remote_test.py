@@ -23,19 +23,28 @@ import json,os,sys,time
 from pathlib import Path
 root=Path(os.environ['HOME'])
 args=sys.argv[1:]
+while args[:1]==['-c']:
+    args=args[2:]
 if args==['--version']:
     print('codex-cli 0.164.0')
 elif args==['remote-control','--no-daemon','--help']:
     print('experimental remote-control')
 elif args==['login','status']:
+    if (root/'status-error').exists():
+        print('Error checking login status: private-provider-error secret-token');sys.exit(1)
     if (root/'grant').exists():
         print('Logged in using ChatGPT')
     else:
         print('Not logged in');sys.exit(1)
 elif args==['login','--device-auth']:
+    (root/'login-started').touch()
+    (root/'grant').unlink(missing_ok=True)
+    (root/'.codex/auth.json').unlink(missing_ok=True)
     print('https://auth.openai.com/codex/device\nABCD-EFGH',flush=True)
     for _ in range(1000):
         if (root/'grant').exists():
+            (root/'.codex/auth.json').write_text('{"synthetic":true}')
+            (root/'.codex/auth.json').chmod(0o600)
             print('Successfully logged in');sys.exit(0)
         time.sleep(.01)
     sys.exit(1)
@@ -88,7 +97,9 @@ class ControllerTests(unittest.TestCase):
 
     def grant(self):
         (self.controller.home / 'grant').touch()
-        self.controller.refresh_auth()
+        if self.controller.job is None and not self.controller.pending_login:
+            (self.controller.codex_home / 'auth.json').write_text('{"synthetic":true}')
+            self.controller.refresh_auth()
 
     def test_device_login_streams_code_before_process_exit_then_clears_it(self):
         self.initialize()
@@ -138,9 +149,10 @@ class ControllerTests(unittest.TestCase):
         self.controller.action('cancel')
         self.assertIsNotNone(old.poll())
         self.assertIsNone(self.controller.status()['login_code'])
+        until(lambda: not self.controller.status()['busy'])
         self.controller.action('login')
-        new = self.controller.job
         until(lambda: self.controller.status()['login_code'])
+        new = self.controller.job
         self.assertIs(self.controller.job, new)
         self.controller.action('cancel')
 
@@ -206,6 +218,101 @@ class ControllerTests(unittest.TestCase):
                       '{"manualPairingCode":"abcd-1234","expiresAt":900}', 'private invalid data'):
             with self.subTest(value=value), self.assertRaises(TestError):
                 parse_pair(value, 1000)
+
+    def test_a_new_login_cannot_revoke_existing_confirmed_credentials(self):
+        self.initialize()
+        self.grant()
+        original = (self.controller.codex_home / 'auth.json').read_bytes()
+        with self.assertRaises(TestError):
+            self.controller.action('login')
+        self.assertFalse((self.controller.home / 'login-started').exists())
+        self.assertEqual((self.controller.codex_home / 'auth.json').read_bytes(), original)
+        self.assertEqual(self.controller.status()['auth_state'], 'signed_in')
+
+    def test_stale_signed_out_state_is_rechecked_before_destructive_cli_login(self):
+        self.initialize()
+        (self.controller.home / 'grant').touch()  # Auth appeared after the last check.
+        (self.controller.codex_home / 'auth.json').write_text('{"synthetic":true}')
+        self.assertEqual(self.controller.auth_state, 'signed_out')
+        self.controller.action('login')
+        until(lambda: not self.controller.status()['busy'])
+        self.assertEqual(self.controller.auth_state, 'signed_in')
+        self.assertFalse((self.controller.home / 'login-started').exists())
+        self.assertTrue((self.controller.codex_home / 'auth.json').exists())
+
+    def test_status_error_is_unknown_and_never_false_logout_or_a_new_login(self):
+        self.initialize()
+        self.grant()
+        marker = self.controller.home / 'status-error'
+        marker.touch()
+        self.controller.refresh_auth()
+        status = self.controller.status()
+        self.assertEqual(status['auth_state'], 'error')
+        self.assertEqual(status['credential_file'], 'present')
+        self.assertIn('returkod 1', status['auth_note'])
+        self.assertNotIn('secret-token', json.dumps(status))
+        self.assertNotIn('private-provider-error', json.dumps(status))
+        with self.assertRaises(TestError):
+            self.controller.action('login')
+        marker.unlink()
+        self.controller.action('check')
+        until(lambda: self.controller.status()['auth_state'] == 'signed_in')
+        self.assertFalse((self.controller.home / 'login-started').exists())
+
+    def test_restart_starts_unknown_then_reads_persisted_credentials(self):
+        self.initialize()
+        self.grant()
+        self.controller.close()
+        self.controller = self.new_controller()
+        self.assertEqual(self.controller.status()['auth_state'], 'checking')
+        self.initialize()
+        self.assertEqual(self.controller.status()['auth_state'], 'signed_in')
+        self.assertEqual(self.controller.status()['credential_file'], 'present')
+
+    def test_page_reload_and_explicit_check_do_not_start_or_clear_login(self):
+        self.initialize()
+        self.grant()
+        before = (self.controller.codex_home / 'auth.json').read_bytes()
+        for _ in range(2):
+            page = Reply(self.controller)
+            page.do_GET()
+            status = Reply(self.controller, '/api/status')
+            status.do_GET()
+            self.assertTrue(json.loads(status.wfile.getvalue())['authenticated'])
+            check = Reply(self.controller, '/api/action', body={'action': 'check'})
+            check.do_POST()
+            self.assertEqual(check.code, 202)
+            until(lambda: self.controller.status()['auth_state'] == 'signed_in')
+        self.assertEqual((self.controller.codex_home / 'auth.json').read_bytes(), before)
+        self.assertFalse((self.controller.home / 'login-started').exists())
+
+    def test_timeout_does_not_masquerade_as_a_missing_login(self):
+        from unittest.mock import patch
+        self.initialize()
+        self.grant()
+        with patch.object(self.controller, '_capture', side_effect=TestError('synthetic timeout')):
+            self.controller.refresh_auth()
+        self.assertEqual(self.controller.status()['auth_state'], 'error')
+        self.assertEqual(self.controller.status()['credential_file'], 'present')
+
+    def test_canceled_pending_check_never_launches_late_device_login(self):
+        from unittest.mock import patch
+        import threading
+        self.initialize()
+        entered, release = threading.Event(), threading.Event()
+        capture = self.controller._capture
+        def slow(args, **kwargs):
+            if args == ['login', 'status']:
+                entered.set()
+                release.wait(2)
+            return capture(args, **kwargs)
+        with patch.object(self.controller, '_capture', side_effect=slow):
+            self.controller.action('login')
+            self.assertTrue(entered.wait(1))
+            self.controller.action('cancel')
+            release.set()
+            until(lambda: not self.controller.status()['busy'])
+        self.assertFalse((self.controller.home / 'login-started').exists())
 
 
 class Reply(web.Handler):

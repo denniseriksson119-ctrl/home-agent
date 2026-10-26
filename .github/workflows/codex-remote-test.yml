@@ -43,8 +43,9 @@ jobs:
       - name: Real CLI, web and persistence smoke test
         run: |
           docker exec codex-test python3 /app/smoke.py
+          docker exec codex-test python3 /app/smoke.py --seed-auth
           docker restart codex-test
-          docker exec codex-test python3 /app/smoke.py --after-restart
+          docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
       - name: Stop and remove synthetic test data
         if: always()
         run: |

@@ -1,5 +1,5 @@
 name: Codex Remote Test
-version: "0.1.1"
+version: "0.1.2"
 slug: codex_remote_test
 description: Isolated experiment connecting ChatGPT mobile to Codex on this device
 url: https://github.com/denniseriksson119-ctrl/home-agent
