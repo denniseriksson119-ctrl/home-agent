@@ -219,6 +219,49 @@ class ReadTests(unittest.TestCase):
         self.assertEqual(request(True, csrf=self.service.csrf, action='revoke').code, 200)
         self.assertFalse(self.service.enabled())
 
+    def submit(self, csrf=None, **headers):
+        from urllib.parse import urlencode
+        reply = Reply(self.service)
+        body = urlencode({'csrf': self.service.csrf if csrf is None else csrf, 'action': 'create'}).encode()
+        reply.rfile = io.BytesIO(body)
+        reply.headers = {'Content-Length': str(len(body)), 'Host': '192.0.2.20:8099', **headers}
+        codex_read.handle_page(reply, self.service, post=True)
+        return reply
+
+    def test_same_origin_and_opaque_or_missing_origin_forms_can_create_ticket(self):
+        for headers in ({'Origin': 'http://192.0.2.20:8099', 'Sec-Fetch-Site': 'same-origin'},
+                        {'Origin': 'null', 'Sec-Fetch-Site': 'same-origin'},
+                        {'Origin': 'null'}, {}):
+            with self.subTest(headers=headers):
+                reply = self.submit(**headers)
+                self.assertEqual(reply.code, 200)
+                self.assertIn(b'textarea', reply.wfile.getvalue())
+                self.assertEqual(reply.response_headers['Referrer-Policy'], 'same-origin')
+                self.assertEqual(reply.response_headers['Cache-Control'], 'no-store')
+
+    def test_opaque_origin_never_bypasses_csrf_or_explicit_cross_site_rejection(self):
+        before = self.service.state_path.read_bytes()
+        for csrf in ('wrong', '', 'ogiltig-åäö'):
+            reply = self.submit(csrf=csrf, Origin='null')
+            self.assertEqual(reply.code, 400)
+            self.assertNotIn(b'textarea', reply.wfile.getvalue())
+            self.assertEqual(self.service.state_path.read_bytes(), before)
+        for headers in ({'Origin': 'http://other.invalid'}, {'Origin': 'http://192.0.2.20'},
+                        {'Origin': 'https://192.0.2.20:8099'}, {'Origin': 'http://user@192.0.2.20:8099'},
+                        {'Origin': 'http://192.0.2.20:8099/path'}, {'Origin': 'http://192.0.2.20:bad'},
+                        {'Origin': 'null', 'Sec-Fetch-Site': 'cross-site'},
+                        {'Origin': 'http://192.0.2.20:8099', 'Sec-Fetch-Site': 'cross-site'}):
+            with self.subTest(headers=headers):
+                reply = self.submit(**headers)
+                self.assertEqual(reply.code, 400)
+                self.assertEqual(self.service.state_path.read_bytes(), before)
+
+    def test_equivalent_default_port_and_hostname_case_are_same_origin(self):
+        self.assertTrue(codex_read.same_origin('http://LOCAL-HOME-AGENT:80', 'local-home-agent'))
+        self.assertTrue(codex_read.same_origin('http://[::1]:8099', '[::1]:8099'))
+        self.assertFalse(codex_read.same_origin('http://local-home-agent:8100', 'local-home-agent:8099'))
+        self.assertFalse(codex_read.same_origin('http://local-home-agent:0', 'local-home-agent'))
+
 
 class MigrationTests(unittest.TestCase):
     def test_generated_instructions_upgrade_but_custom_files_and_auth_are_preserved(self):
