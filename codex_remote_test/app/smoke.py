@@ -6,6 +6,7 @@ import hashlib
 import os
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -35,6 +36,43 @@ def write_synthetic_auth():
 def main():
     if '--write-synthetic-auth' in sys.argv:
         write_synthetic_auth()
+        return
+    if '--protocol-smoke' in sys.argv:
+        from controller import Controller
+        from remote_rpc import request, RemoteError
+        assert os.geteuid() == 10001
+        controller = Controller()
+        path = controller.home / 'ci-protocol.sock'
+        process = controller._spawn(['app-server', '--listen', 'unix://' + str(path)])
+        def discard_output():
+            while process.stdout.read(4096):
+                pass
+        reader = threading.Thread(target=discard_output, daemon=True)
+        reader.start()
+        try:
+            deadline = time.monotonic() + 30
+            while True:
+                try:
+                    state = request(path, 'remoteControl/status/read', timeout=2)
+                    break
+                except RemoteError:
+                    if time.monotonic() > deadline or process.poll() is not None:
+                        raise SystemExit('Real Unix app-server protocol did not become ready')
+                    time.sleep(.25)
+            assert state['status'] == 'disabled', state['status']
+            try:
+                request(path, 'remoteControl/pairing/start', {'manualCode': True})
+            except RemoteError as error:
+                assert error.kind == 'rpc', error.kind
+            else:
+                raise AssertionError('Disabled offline server must not produce a pairing code')
+            print('PASS: real app-server Unix/WebSocket initialize, status and pairing RPC on the same server; no relay enabled')
+        finally:
+            controller.terminate(process)
+            reader.join(4)
+            if process.stdout:
+                process.stdout.close()
+            controller.close()
         return
     deadline = time.monotonic() + 40
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -94,6 +132,8 @@ def main():
                     raise SystemExit('Real CLI could not reload the synthetic credential cache: ' + state['auth_state'])
                 time.sleep(.25)
         assert hashlib.sha256(auth_path.read_bytes()).hexdigest() == before
+        subprocess.run(['setpriv', '--reuid=10001', '--regid=10001', '--init-groups',
+                        'python3', '/app/smoke.py', '--protocol-smoke'], check=True)
         print('PASS: real CLI re-reads synthetic cached ChatGPT auth without a new login or credential replacement')
     marker = Path('/data/workspace/container-persistence.txt')
     if '--after-restart' in sys.argv:

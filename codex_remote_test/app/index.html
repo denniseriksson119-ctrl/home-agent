@@ -18,6 +18,7 @@ section{background:#1d3039;border:1px solid #40565c;padding:18px;border-radius:1
 <div id="login" hidden><span class="code" id="login-code"></span><a class="link" id="login-link" href="https://auth.openai.com/codex/device" target="_blank" rel="noopener noreferrer">Öppna OpenAI-inloggning</a><p>Återvänd hit när du har godkänt. Sidan kontrollerar resultatet automatiskt.</p></div>
 <button class="secondary" data-action="cancel">Avbryt pågående försök</button></section>
 <section><h2>2. Anslut mobilen</h2>
+<p id="remote-note" role="status"></p><p id="pair-message" aria-live="polite"></p>
 <button data-action="start">Starta fjärranslutning</button><button data-action="pair">Skapa parkod</button>
 <div id="pair" hidden><span class="code" id="pair-code"></span><p id="expiry"></p></div>
 <p>Öppna <strong>Remote / Codex</strong> i den uppdaterade ChatGPT-appen och välj att lägga till en anslutning. Använd parkoden om appen erbjuder kodinmatning.</p>
@@ -39,7 +40,11 @@ async function refresh(){
   if(!response.ok)throw Error();
   const s=await response.json();
   const labels={checking:'Kontrollerar inloggning…',signing_in:'Inloggning pågår',signed_in:'ChatGPT inloggat',signed_out:'Inte inloggad',error:'Inloggningsstatus okänd',wrong_method:'Annan inloggningsmetod'};
-  statusNode.textContent='Codex '+s.version+' · '+(labels[s.auth_state]||'Inloggningsstatus okänd')+' · '+(s.remote_running?'Fjärrprocess igång':'Fjärrprocess stoppad');
+  const remoteLabels={stopped:'Fjärrprocess stoppad',starting:'Startar Codex-server',connecting:'Ansluter till OpenAI',connected:'Ansluten till OpenAI',disabled:'Fjärranslutning avstängd',errored:'Fel i OpenAI-anslutningen',error:'Fel i kontrollanslutningen'};
+  statusNode.textContent='Codex '+s.version+' · '+(labels[s.auth_state]||'Inloggningsstatus okänd')+' · '+(remoteLabels[s.remote_status]||'Fjärrstatus okänd');
+  document.getElementById('remote-note').textContent=s.remote_note;
+  document.getElementById('pair-message').textContent=s.message;
+  document.querySelector('button[data-action="pair"]').textContent=s.pair_pending?'Begär parkod…':'Skapa parkod';
   document.getElementById('auth-note').textContent=s.auth_note;
   const files={present:'finns',missing:'saknas',unreadable:'kan inte kontrolleras',unexpected_type:'oväntad filtyp'};
   document.getElementById('diagnostics').textContent='Sparad inloggningsfil: '+(files[s.credential_file]||'okänd')+'. Senast kontrollerad: '+(s.auth_checked_at?new Date(s.auth_checked_at*1000).toLocaleString():'ännu inte kontrollerad')+'. Tillägget startade: '+new Date(s.started_at*1000).toLocaleString()+'.';
@@ -55,7 +60,7 @@ async function refresh(){
     (a==='login'&&(s.busy||s.remote_running||s.auth_state!=='signed_out'))||
     (a==='check'&&s.busy)||
     (a==='start'&&(!s.authenticated||s.busy||s.remote_running))||
-    (a==='pair'&&(!s.authenticated||!s.remote_running||s.busy))||
+    (a==='pair'&&(!s.authenticated||s.remote_status!=='connected'||s.busy))||
     (a==='cancel'&&!s.operation_active)||(a==='stop'&&!s.remote_running&&!s.remote_enabled);
   }
   if(needsAuthCheck&&s.supported&&!s.busy&&!sending){
@@ -66,11 +71,12 @@ async function refresh(){
 }
 for(const button of document.querySelectorAll('button[data-action]'))button.addEventListener('click',async()=>{
  sending=true;button.disabled=true;
+ if(button.dataset.action==='pair')document.getElementById('pair-message').textContent='Begär parkod…';
  try{
   const response=await fetch('api/action',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({action:button.dataset.action})});
   const data=await response.json();
-  if(!response.ok){notice.textContent=data.error;return;}
- }catch{notice.textContent='Åtgärden kunde inte skickas. Öppna tillägget på nytt.';}
+  if(!response.ok){notice.textContent=data.error;document.getElementById('pair-message').textContent=data.error;return;}
+ }catch{notice.textContent='Åtgärden kunde inte skickas. Öppna tillägget på nytt.';document.getElementById('pair-message').textContent=notice.textContent;}
  finally{sending=false;}
  await refresh();
 });

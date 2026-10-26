@@ -65,10 +65,10 @@ Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedd
 
 ## BL-CODEX-001 — Codex session on Pi from the ChatGPT mobile app
 
-**Priority:** Isolated connection experiment requested by owner. **Status:** 0.1.1 installed on Pi and device login confirmed by owner. Owner reports lost login status after reopening the page; 0.1.2 adds safe rechecks and blocks unintended new login. Exact cause on Pi and real mobile pairing remain unverified.
+**Priority:** Isolated connection experiment requested by owner. **Status:** Installation and cached ChatGPT login confirmed on Pi, including the 0.1.2 status screen. Pairing fails. Source review identified that the old pairing command targets the daemon rather than the supervised foreground server. 0.1.3 uses the same private app-server Unix socket for enable/status/pairing and gates pairing on actual connected status. Real OpenAI/Android pairing remains unverified.
 
 - Separate Codex Remote Test 0.1.0, pinned CLI 0.164.0, Ingress setup and synthetic workspace.
-- Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account.
+- Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account, checking the actual Unix/WebSocket initialize, status and pairing RPCs on one server offline.
 - Owner acceptance: install on Home Assistant OS, complete ChatGPT device login, actually pair Android, read the test marker, create a synthetic note and resume the same conversation after add-on restart.
 - If the Android UI lacks manual code entry or the service requires a desktop host, the direct connection remains unverified/blocked. A generated code alone is not acceptance.
 - No production Home Agent data access or AI-import integration is authorized by this test. No dependency on the unfinished Drive workstream.
