@@ -10,6 +10,9 @@ import drive_auth
 import chatgpt_export
 import google_device
 import codex_read
+import object_resources
+import source_migration
+import source_migration_ui
 import copy
 import hashlib
 import difflib
@@ -35,6 +38,15 @@ DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
 DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 GOOGLE_DEVICE = google_device.Controller()
 CODEX_READ = codex_read.ReadService(DB_FILE, SOURCE_DIR)
+SOURCE_MIGRATION = source_migration.Controller()
+
+
+def migration_credentials():
+    token = drive_auth.access_token(DRIVE_AUTH_FILE)
+    root_id = DRIVE_ROOT_FILE.read_text(encoding='utf-8').strip()
+    if not token or not root_id:
+        raise ValueError('Drive-import är inte konfigurerad.')
+    return token, root_id
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -597,7 +609,8 @@ def room_page(data, room_id):
         "Underhåll": related(home.get("maintenance")),
         "Kostnader": related(home.get("costs")),
     }
-    return ui.room_detail_page(room_id, floor, room, sections, room_history(room_id))
+    sections, originals = object_resources.room_links(DB_FILE, sections, room_id)
+    return ui.room_detail_page(room_id, floor, room, sections, room_history(room_id), originals)
 
 def render(data, error=None, notice=None):
     out = ["<!doctype html><html><head><meta charset='utf-8'>",
@@ -661,6 +674,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/sources/import':
+            source_migration_ui.handle(self, SOURCE_MIGRATION, DB_FILE, SOURCE_DIR,
+                                       DB_FILE.parent / 'source-imports', migration_credentials, uuid7)
+            return
+        if parsed.path == '/objects':
+            self.send_page(object_resources.list_page(DB_FILE))
+            return
+        if parsed.path == '/object':
+            body, status = object_resources.detail_page(DB_FILE, parse_qs(parsed.query).get('id', [''])[0])
+            self.send_page(body, status)
+            return
         if parsed.path == '/codex/connect':
             codex_read.handle_page(self, CODEX_READ)
             return
@@ -695,7 +719,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == '/source/file':
             source_id = parse_qs(parsed.query).get('id',[''])[0]
-            if not any(row[0]==source_id for row in asset_detail(parse_qs(parsed.query).get('asset',[''])[0])[1]):
+            query = parse_qs(parsed.query)
+            object_id = query.get('object', query.get('asset', ['']))[0]
+            if not any(row[0]==source_id for row in object_resources.detail(DB_FILE, object_id)[1]):
                 self.send_error(404)
                 return
             verified = verified_source(source_id)
@@ -782,6 +808,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_page(render(data, error))
 
     def do_POST(self):
+        if urlparse(self.path).path == '/sources/import':
+            source_migration_ui.handle(self, SOURCE_MIGRATION, DB_FILE, SOURCE_DIR,
+                                       DB_FILE.parent / 'source-imports', migration_credentials, uuid7, post=True)
+            return
         path = urlparse(self.path).path
         if path == '/codex/connect':
             codex_read.handle_page(self, CODEX_READ, post=True)

@@ -93,6 +93,20 @@ A Source may relate simultaneously to Room, Asset, System, Project and Event wit
 
 Archive operations record external storage references and verification state locally.
 
+### Local original archive (0.8.9)
+
+New originals from the explicit legacy import use stable coarse directories
+inside the managed local Source store: `Photos`, `Documents/Manuals`,
+`Documents/Invoices`, and `Documents/Other`. A full Source-ID prefix plus a
+portable filename avoids collisions. Existing originals keep their verified
+storage references and IDs. Files are not duplicated into per-room/per-asset
+directories. The same Source is linked explicitly to the existing Document and
+its registered Room/Asset/System/etc. references. A private, reviewed upload
+bundle is supported when Pi cannot access the older Drive root; its provider
+references are user-supplied provenance, not verified Google authorization.
+See [legacy import](../development/LEGACY_SOURCE_IMPORT.md) for the boundary,
+resume semantics and acceptance checks.
+
 ## Drive Inbox handoff and cleanup
 Drive Inbox is a temporary ingest/drop zone.
 

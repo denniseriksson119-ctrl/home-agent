@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.9
+
+- Förhandsgranska och överför äldre dokumentoriginal till lokala arkivmappar, via privat ZIP-paket eller befintlig verifierad Drive-import.
+- Bevara dokument-/Source-ID:n, verifiera original och återanvänd exakta dubletter. Spara filvisa framsteg, explicita kopplingar och audit; fortsätt efter avbrott utan automatisk import vid uppstart.
+- Öppna kopplade original från dokument, rum, utrustning och system. Äldre Drive-sökvägar är provenance, inte Pi:s mappstruktur.
+- Husdataöverföring kräver ägarens filurval och godkännande i Home Agent. Drive och Codex-läsbehörigheter ändras inte.
+
 ## 0.8.8
 
 - Rätta formulärkontrollen för Codex-läsnyckeln när en mobilwebbläsare skickar Origin: null. En giltig CSRF-kod krävs alltid; uttryckliga främmande origin och cross-site-anrop nekas fortfarande.

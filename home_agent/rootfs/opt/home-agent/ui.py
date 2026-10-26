@@ -146,6 +146,8 @@ def search_page():
 
 def more_page(export_status=None):
     body = "<h1>Mer</h1><p class='sub'>Fler vyer och verktyg.</p>"
+    body += card_link('/objects', '📄', 'Dokument & objekt', 'Öppna kopplade lokala original')
+    body += card_link('/sources/import', '📂', 'Överför äldre original', 'Förhandsgranska och kopiera från Drive')
     body += card_link('/codex/connect', '✦', 'Anslut Codex', 'Läs husinformation, dokument och bilder från mobilen')
     body += card_link("/rooms", "🏠", "Rum och utrymmen", "Visa alla rum")
     body += card_link("/assets", "🔧", "Utrustning", "Visa utrustningssidor")
@@ -219,7 +221,7 @@ def google_connection_page(status, csrf):
     body += "<p class='sub'>Din Google-inloggning sker hos Google. Behörigheten sparas lokalt på Pi.</p>"
     return shell("Anslut Google Drive", body, "more")
 
-def room_detail_page(room_id, floor, room, sections, history):
+def room_detail_page(room_id, floor, room, sections, history, originals=''):
     """Render already-resolved explicit relationships, never infer room links."""
     if not room:
         return shell("Rum saknas", "<h1>Rummet hittades inte</h1><p><a href='/rooms'>← Alla rum</a></p>")
@@ -255,6 +257,7 @@ def room_detail_page(room_id, floor, room, sections, history):
              "<textarea id='note' name='note' rows='3' required maxlength='5000'></textarea>"
              "<button type='submit'>Spara anteckning</button></form></details></section>" % esc(room_id))
     body += "<h2 id='related'>Relaterat till rummet</h2>"
+    body += originals
     any_related = False
     for title, items in sections.items():
         if not items:
@@ -262,7 +265,10 @@ def room_detail_page(room_id, floor, room, sections, history):
         any_related = True
         body += "<section class='card room-section'><strong>%s</strong><ul class='related-list'>" % esc(title)
         for item in items:
-            body += "<li>%s</li>" % esc(item.get("name") or item.get("id") or "Namnlöst objekt")
+            label = esc(item.get("name") or item.get("id") or "Namnlöst objekt")
+            if item.get('_url'):
+                label = "<a href='%s'>%s</a>" % (esc(item['_url']), label)
+            body += '<li>%s</li>' % label
         body += "</ul></section>"
     if not any_related:
         body += "<div class='card empty'>Inga kopplade objekt ännu.</div>"
@@ -290,6 +296,7 @@ def asset_page(asset, files, candidates):
         return shell("Saknas","<h1>Utrustningen hittades inte</h1><a href='/assets'>← Utrustning</a>")
     aid = quote(asset["id"],safe="")
     body = "<a class='text-link' href='/assets'>← Utrustning</a><p class='eyebrow'>UTRUSTNING</p><h1>%s</h1>" % esc(asset["name"] or "Utrustning")
+    body += "<p><a href='/object?id=%s'>Visa dokument och registrerade relationer</a></p>" % aid
     images = [(sid,name,media) for sid,name,media in files if (media or "").startswith("image/")]
     if images:
         sid,name,_ = images[0]
