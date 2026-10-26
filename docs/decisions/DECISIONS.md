@@ -214,9 +214,9 @@ See [account/storage policy](../architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.m
 
 ## DD-044 — Isolated Codex mobile connection experiment on Home Assistant OS
 
-**Status:** Implementation authorized by owner, 2026-10-25; actual Pi/mobile acceptance pending.
+**Status:** Implementation authorized by owner, 2026-10-25. Owner confirmed Pi/Android connection, synthetic file read/write and conversation continuation after restart with 0.1.3 on 2026-10-26. Resource profiling and production integration remain separate work.
 
-Provide a separate Codex Remote Test add-on (initial version 0.1.0) for ARM64 and amd64, using pinned public Codex CLI 0.164.0. The owner uses the existing ChatGPT Android app and ChatGPT account, without a separate model API key. A Home Assistant Ingress-only setup page handles fixed device-login, foreground remote-control, manual pairing-code and stop/cancel operations.
+Provide a separate Codex Remote Test add-on (initial version 0.1.0) for ARM64 and amd64, using pinned public Codex CLI 0.164.0. The owner uses the existing ChatGPT Android app and ChatGPT account, without a separate model API key. A Home Assistant Ingress-only setup page handles fixed device-login, remote connection, manual pairing-code and stop/cancel operations. Since 0.1.3, enable/status/pairing all address the same supervised app-server through a private Unix/WebSocket socket.
 
 The add-on runs unprivileged after private directory preparation and persists its own test workspace, CLI credentials and history. It mounts no Home Agent, host or shared production data and requests no Supervisor, Home Assistant or Docker API privileges. It supplies no bypass flags. Normal workspace sandbox and on-request approvals remain enabled. Network access to OpenAI is necessary; container isolation is not a blanket LAN network restriction.
 
