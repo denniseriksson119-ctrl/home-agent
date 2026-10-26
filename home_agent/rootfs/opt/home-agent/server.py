@@ -9,6 +9,7 @@ import drive_register
 import drive_auth
 import chatgpt_export
 import google_device
+import codex_read
 import copy
 import hashlib
 import difflib
@@ -33,6 +34,7 @@ DB_SCHEMA_VERSION = 5
 DRIVE_AUTH_FILE = Path('/data/drive_import_oauth.json')
 DRIVE_ROOT_FILE = Path('/data/drive_import_root_id')
 GOOGLE_DEVICE = google_device.Controller()
+CODEX_READ = codex_read.ReadService(DB_FILE, SOURCE_DIR)
 
 def load_yaml(path):
     with path.open("r", encoding="utf-8") as f:
@@ -659,6 +661,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/codex/connect':
+            codex_read.handle_page(self, CODEX_READ)
+            return
         if parsed.path == "/drive/connect":
             google_device.handle_get(self, GOOGLE_DEVICE)
             return
@@ -778,6 +783,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
+        if path == '/codex/connect':
+            codex_read.handle_page(self, CODEX_READ, post=True)
+            return
         if path in ("/drive/connect/start", "/drive/connect/cancel"):
             google_device.handle_post(self, GOOGLE_DEVICE, path)
             return
@@ -929,9 +937,12 @@ if __name__ == "__main__":
     inbox_queue.launch(DB_FILE, SOURCE_DIR)
     export_stop = chatgpt_export.launch(DB_FILE, SOURCE_DIR)
     google_stop = GOOGLE_DEVICE.launch()
+    read_server = codex_read.launch(CODEX_READ)
     try:
         HTTPServer((HOST, PORT), Handler).serve_forever()
     finally:
         export_stop.set()
         google_stop.set()
+        read_server.shutdown()
+        read_server.server_close()
 

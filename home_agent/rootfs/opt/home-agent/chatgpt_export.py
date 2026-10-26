@@ -17,6 +17,7 @@ STATE = Path("/data/chatgpt_drive_state.json")
 INTERVAL = 15 * 60
 PURPOSE = "home-agent-chatgpt-read"
 WAKE = threading.Event()
+PAUSED_FOR_CODEX = True
 
 
 def request_publish():
@@ -125,6 +126,8 @@ def publish_once(db_path, source_dir, config_path=CONFIG, state_path=STATE):
 
 
 def status(config_path=CONFIG, state_path=STATE):
+    if PAUSED_FOR_CODEX:
+        return {'enabled': False, 'paused': True}
     try:
         if not Path(config_path).exists():
             return {"enabled": False}
@@ -149,7 +152,8 @@ def run(db_path, source_dir, stop):
     while not stop.is_set():
         WAKE.clear()
         try:
-            publish_once(db_path, source_dir)
+            if not PAUSED_FOR_CODEX:
+                publish_once(db_path, source_dir)
         except Exception:
             print("Home Agent: ChatGPT-publicering misslyckades; nytt försök om 15 minuter.", flush=True)
         for _ in range(INTERVAL):

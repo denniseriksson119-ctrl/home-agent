@@ -1,5 +1,15 @@
 # Home Agent add-on
 
+## Codex read connection (0.8.7)
+
+The primary interactive AI path is Codex on Pi through the ChatGPT mobile app.
+Update Codex Remote Test to 0.1.5, then open **Mer → Anslut Codex** in Home Agent
+and copy the dedicated read key into the Codex add-on's setup page. This exposes
+a bounded current read model and explicitly linked NIBE PDF/images, without
+domain writes, data mounts or a new host port. Drive publication is paused;
+Drive backup/restore and validated proposal import are separate future work.
+[Phone setup and acceptance](../docs/architecture/CODEX_HOME_AGENT_READ.md).
+
 ## Google Drive from a phone (0.8.6)
 
 Configure the Google client in Home Assistant, then open Home Agent → Mer → Anslut Google Drive. Pi displays a code and Google link, and the user approves on the phone. Google Cloud requires a **TVs and Limited Input devices** OAuth client; no desktop script or token-file transfer is needed for this setup path. [Mobile setup and acceptance](https://github.com/denniseriksson119-ctrl/home-agent/blob/main/docs/architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md).

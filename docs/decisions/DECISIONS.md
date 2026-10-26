@@ -223,3 +223,14 @@ The add-on runs unprivileged after private directory preparation and persists it
 A successful build, process startup or pairing-code response does not prove mobile support. CLI remote control is experimental and the documented mobile route still uses a desktop host. Verify actual Android pairing, synthetic file access and conversation resumption after restart before any further integration. If unavailable, report the concrete limitation rather than exposing an app-server port or claiming a working connection.
 
 This experiment does not change Home Agent runtime, Drive architecture or domain approval rules. Home Agent stays at 0.8.6; the separate add-on has its own version/isolation CI guard. See [installation and acceptance](../../codex_remote_test/DOCS.md).
+
+
+## DD-045 — Codex becomes the primary interactive AI workspace
+
+**Status:** Accepted by owner, 2026-10-26 ("gör enligt förslag").
+
+The owner successfully connected the ChatGPT Android app directly to Codex on Pi and resumed the same conversation after restart. Use this account-based Codex workflow for interactive house analysis. Keep Home Agent and Codex as separate add-ons. Pause ordinary-ChatGPT Drive publication as the AI transport; preserve Drive configuration/data and its independent backup/archive role. No paid model API or local model is required for this interactive path.
+
+First delivery: owner-enabled, dedicated read credential and fixed MCP tools for an object navigation index, bounded NIBE records and explicitly linked, checksum-verified original PDF/images. The database and source store remain inside Home Agent. Use a separate internal-only read port and reject mutations; do not grant filesystem mounts or Home Assistant/Supervisor privileges. Original downloads become private Codex working copies; revocation blocks new requests, not already received content.
+
+This is not autonomous backend AI, proposal application or backup. After real NIBE/PDF/image acceptance, implement structured proposal validation and semantic review before local commit. Implement and restore-test Drive backup separately. See [read contract and acceptance](../architecture/CODEX_HOME_AGENT_READ.md).

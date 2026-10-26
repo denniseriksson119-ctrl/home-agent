@@ -146,12 +146,15 @@ def search_page():
 
 def more_page(export_status=None):
     body = "<h1>Mer</h1><p class='sub'>Fler vyer och verktyg.</p>"
+    body += card_link('/codex/connect', '✦', 'Anslut Codex', 'Läs husinformation, dokument och bilder från mobilen')
     body += card_link("/rooms", "🏠", "Rum och utrymmen", "Visa alla rum")
     body += card_link("/assets", "🔧", "Utrustning", "Visa utrustningssidor")
     body += card_link("/inbox", "📥", "Inbox", "Visa sparade filer")
     export_status = export_status or {}
     body += "<div class='card'><h2>ChatGPT via Drive</h2>"
-    if export_status.get("enabled"):
+    if export_status.get('paused'):
+        body += '<p>Publiceringen är pausad. Codex läser direkt från Home Agent när du aktiverat läskopplingen. Drive-backup planeras separat.</p>'
+    elif export_status.get("enabled"):
         body += "<p>Läsunderlaget kontrolleras automatiskt var 15:e minut.</p>"
         if export_status.get("last_success"):
             stamp = export_status["last_success"]
@@ -168,8 +171,10 @@ def more_page(export_status=None):
         body += "<p>Inte anslutet. En separat Drive-anslutning behövs för automatisk publicering.</p>"
     if export_status.get("error"):
         body += "<p>%s</p>" % esc(export_status["error"])
-    body += "<p><a href='/drive/connect'>Anslut Google Drive</a></p>"
-    body += "<p class='sub'>Drive innehåller en läskopia. Kontrollera tidstämpeln innan analys.</p></div>"
+    if not export_status.get('paused'):
+        body += "<p><a href='/drive/connect'>Anslut Google Drive</a></p>"
+        body += "<p class='sub'>Drive innehåller en läskopia. Kontrollera tidstämpeln innan analys.</p>"
+    body += '</div>'
     body += "<details class='card'><summary>Importera YAML (avancerat)</summary>"
     body += ("<form method='post' action='/import' enctype='multipart/form-data'>"
              "<input type='file' name='snapshot' accept='.yaml,.yml,text/yaml,application/x-yaml' required>"

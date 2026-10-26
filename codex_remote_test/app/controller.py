@@ -9,6 +9,7 @@ import stat
 import subprocess
 import threading
 import time
+import home_agent_mcp
 from pathlib import Path
 from remote_rpc import RemoteError, request as remote_request
 
@@ -119,6 +120,10 @@ class Controller:
             else:
                 with os.fdopen(fd, 'wb') as stream:
                     stream.write((seed / name).read_bytes())
+        # Upgrade only the exact generated connection-test instructions. Preserve user edits.
+        agent_file = self.workspace / 'AGENTS.md'
+        if agent_file.read_bytes() == (seed / 'AGENTS.connection-test.md').read_bytes():
+            agent_file.write_bytes((seed / 'AGENTS.md').read_bytes())
         if self.state_file.exists() or self.state_file.is_symlink():
             info = self.state_file.lstat()
             if not stat.S_ISREG(info.st_mode) or stat.S_IMODE(info.st_mode) & 0o077 or info.st_size > 1024:
@@ -135,7 +140,10 @@ class Controller:
 
     def _spawn(self, args):
         return subprocess.Popen([self.binary, '-c', 'cli_auth_credentials_store="file"',
-                                 '-c', 'forced_login_method="chatgpt"', *args], cwd=self.workspace, env=self.env(),
+                                 '-c', 'forced_login_method="chatgpt"',
+                                 '-c', 'mcp_servers.home_agent.command="/usr/bin/python3"',
+                                 '-c', 'mcp_servers.home_agent.args=["/app/home_agent_mcp.py"]',
+                                 '-c', 'mcp_servers.home_agent.tool_timeout_sec=60', *args], cwd=self.workspace, env=self.env(),
                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, start_new_session=True)
 
@@ -269,6 +277,7 @@ class Controller:
                     'remote_running': running, 'remote_enabled': self.requested,
                     'remote_status': self.remote_status if running else 'stopped',
                     'remote_note': self.remote_note, 'pair_pending': self.pair_pending,
+                    'home_agent_read': (self.home / 'home-agent-read.json').is_file(),
                     'login_code': self.login_code,
                     'login_url': DEVICE_URL if self.login_code else None,
                     'pair_code': self.pair_code,

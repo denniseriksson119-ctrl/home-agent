@@ -436,13 +436,28 @@ class HTTPTests(unittest.TestCase):
         reply.do_POST()
         self.assertEqual(reply.code, 400)
 
-    def test_ui_has_relative_ingress_urls_no_external_scripts_or_token_input(self):
+    def test_read_key_setup_requires_ingress_csrf_and_never_returns_the_key(self):
+        from unittest.mock import patch
+        import home_agent_mcp
+        with patch.object(home_agent_mcp, 'connect') as connect:
+            bad = Reply(self.controller, '/api/home-agent', body={'ticket': 'private-read-key'}, **{'X-CSRF-Token': 'wrong'})
+            bad.do_POST()
+            self.assertEqual(bad.code, 403)
+            connect.assert_not_called()
+            good = Reply(self.controller, '/api/home-agent', body={'ticket': 'private-read-key'})
+            good.do_POST()
+            self.assertEqual(good.code, 200)
+            self.assertNotIn(b'private-read-key', good.wfile.getvalue())
+            connect.assert_called_once_with('private-read-key', self.controller.home / 'home-agent-read.json')
+
+    def test_ui_has_relative_ingress_urls_and_only_dedicated_read_key_input(self):
         page = (APP / 'index.html').read_text()
         self.assertIn("fetch('api/status'", page)
         self.assertIn("fetch('api/action'", page)
         self.assertNotIn('<script src=', page)
         self.assertNotIn('auth.json', page)
-        self.assertNotIn('<input', page)
+        self.assertIn('id="read-ticket" type="password"', page)
+        self.assertNotIn('OPENAI_API_KEY', page)
 
 
 class RPCTests(unittest.TestCase):

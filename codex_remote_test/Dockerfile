@@ -5,7 +5,7 @@ FROM node:22-bookworm-slim
 
 RUN test -f /etc/debian_version && command -v apt-get && command -v npm \
     && apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-websocket git ca-certificates tini util-linux \
+    python3 python3-websocket poppler-utils git ca-certificates tini util-linux \
     && rm -rf /var/lib/apt/lists/*
 # Optional public build CA for managed build environments; never part of the image.
 RUN --mount=type=secret,id=proxy_ca \

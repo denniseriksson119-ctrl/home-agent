@@ -1,10 +1,10 @@
 name: Codex Remote Test
 on:
   pull_request:
-    paths: ['codex_remote_test/**', 'tests/test_codex_remote_test.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
   push:
     branches: [main]
-    paths: ['codex_remote_test/**', 'tests/test_codex_remote_test.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
+    paths: ['codex_remote_test/**', 'home_agent/**', 'tests/test_codex*.py', 'scripts/codex_read_smoke.py', 'scripts/check_codex_test_version.py', '.github/workflows/codex-remote-test.yml']
 permissions:
   contents: read
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - if: github.event_name == 'pull_request'
         run: python scripts/check_codex_test_version.py --base "${{ github.event.pull_request.base.sha }}"
       - run: python -m py_compile codex_remote_test/app/*.py
-      - run: python -m unittest discover -s tests -p 'test_codex_remote_test.py' -v
+      - run: python -m unittest discover -s tests -p 'test_codex*.py' -v
   container:
     strategy:
       fail-fast: false
@@ -46,8 +46,36 @@ jobs:
           docker exec codex-test python3 /app/smoke.py --seed-auth
           docker restart codex-test
           docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
+      - name: Build Home Agent and connect only an internal test network
+        run: |
+          arch=amd64
+          if [ "$(uname -m)" = aarch64 ]; then arch=aarch64; fi
+          docker build --build-arg BUILD_FROM=ghcr.io/home-assistant/$arch-base:3.21 --tag home-agent:ci ./home_agent
+          docker network create --internal codex-read-ci
+          docker network connect codex-read-ci codex-test
+          docker run --detach --name home-agent-read --hostname local-home-agent --network codex-read-ci --network-alias local-home-agent home-agent:ci
+          docker cp scripts/codex_read_smoke.py home-agent-read:/tmp/codex_read_smoke.py
+          docker exec home-agent-read python3 /tmp/codex_read_smoke.py seed
+          docker cp home-agent-read:/data/ci-ticket /tmp/ci-ticket
+          docker cp /tmp/ci-ticket codex-test:/tmp/ci-ticket
+          docker cp scripts/codex_read_smoke.py codex-test:/tmp/codex_read_smoke.py
+          docker exec codex-test chown 10001:10001 /tmp/ci-ticket
+      - name: Read actual PDF and PNG through MCP and the authenticated service
+        run: |
+          docker exec codex-test setpriv --reuid=10001 --regid=10001 --init-groups python3 /tmp/codex_read_smoke.py verify
+          docker restart codex-test
+          docker exec codex-test python3 /app/smoke.py --after-restart --expect-auth
+          docker exec codex-test setpriv --reuid=10001 --regid=10001 --init-groups python3 /tmp/codex_read_smoke.py resumed
+          docker exec home-agent-read python3 /tmp/codex_read_smoke.py unchanged
+      - name: Container diagnostics on failure
+        if: failure()
+        run: |
+          docker logs home-agent-read || true
+          docker logs codex-test || true
       - name: Stop and remove synthetic test data
         if: always()
         run: |
           docker rm --force codex-test || true
+          docker rm --force home-agent-read || true
           docker volume rm codex-test-data || true
+          docker network rm codex-read-ci || true

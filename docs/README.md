@@ -27,8 +27,9 @@ Experimental implementation does not automatically become product policy.
 
 ## Current implementation plan
 - **0.7 — Permanent local data foundation** — `implementation/0.7_PLAN.md`
-- **ChatGPT Plus via automatically published Drive read model (0.8.5; Pi/phone acceptance pending)** — [setup, scope and acceptance](architecture/CHATGPT_DRIVE_READ_MODEL.md)
-- **Google Drive connection from a phone (0.8.6; real Google acceptance pending)** — [mobile setup and security boundary](architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md)
+- **Primary AI workflow: Codex → Home Agent read tools (Home Agent 0.8.7 + Codex 0.1.5; real house/PDF/image acceptance pending)** — [phone setup, scope and acceptance](architecture/CODEX_HOME_AGENT_READ.md)
+- **Drive publication for ordinary ChatGPT: paused** — [previous read model](architecture/CHATGPT_DRIVE_READ_MODEL.md). Drive backup/archive remains a separate workstream.
+- **Google Drive connection from a phone (0.8.6; legacy setup, real Google acceptance pending)** — [mobile setup and security boundary](architecture/GOOGLE_DRIVE_MOBILE_CONNECT.md)
 
 
 ## Active backlog and Drive account policy
@@ -36,4 +37,4 @@ Experimental implementation does not automatically become product policy.
 - [Existing shared Drive folder, account boundary and storage ownership](architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md) — owner clarification 2026-10-19; current exporter still needs adaptation.
 
 ## Codex on Home Assistant OS — isolated connection experiment
-- [Codex Remote Test 0.1.4: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — owner confirmed direct Android connection, file read/write and resumed conversation after restart on Pi with 0.1.3; 0.1.4 clarifies returning-user guidance. Independent of Home Agent 0.8.6 and the Drive workstream.
+- [Codex Remote Test 0.1.5: phone setup, boundaries and acceptance](../codex_remote_test/DOCS.md) — owner confirmed direct Android connection and resumed conversation on Pi with 0.1.3; 0.1.5 adds opt-in Home Agent read tools without production data mounts.

@@ -1,5 +1,7 @@
 # Google Drive från telefonen — Home Agent 0.8.6
 
+> **2026-10-26:** Drive-publicering är pausad som AI-huvudspår. Använd [Codex-läskopplingen](CODEX_HOME_AGENT_READ.md). Detta dokument beskriver den tidigare vägen; Drive-backup/arkiv planeras separat.
+
 **Godkänt av ägaren:** 2026-10-18, "gör uppdateringen".
 **Status:** Implementerat för granskning; verkligt Google-godkännande och Pi-publicering återstår som installationsprov.
 

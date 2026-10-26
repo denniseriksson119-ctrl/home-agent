@@ -1,14 +1,14 @@
 # Home Agent — aktiv backlog
 
-**Uppdaterad:** 2026-10-19.
-Detta är en avgränsad fortsättningsbacklog för Drive/ChatGPT-spåret, inte en fullständig inventering av projektets återstående funktioner.
+**Uppdaterad:** 2026-10-26.
+Huvudspåret för interaktiv AI är nu Codex på Pi via ChatGPT-appen. Drive-publiceringen pausas; backup/arkiv och ägaröverföring kvarstår. Detta är en avgränsad fortsättningsbacklog, inte en fullständig inventering av projektets återstående funktioner.
 
 Principer: [konton och lagring](../architecture/GOOGLE_DRIVE_ACCOUNTS_AND_STORAGE.md), [backup/återställning](../architecture/BACKUP_RESTORE_ARCHIVE.md).
 Dokumenterat arbete innebär inte att funktionerna är byggda eller att en implementation har godkänts. Kodändringar följer [utvecklingsflödet](DEVELOPMENT_WORKFLOW.md).
 
 ## BL-DRIVE-001 — Använd den befintliga delade roten för ChatGPT-läsunderlag
 
-**Prioritet:** Nästa leverans. **Status:** Öppen; auktoriseringsväg behöver verifieras.
+**Prioritet:** Pausad för ChatGPT-publicering. **Status:** Auktoriseringsväg till delad rot behöver fortfarande verifieras för framtida Drive-backup/arkiv.
 
 Problem: Exporten i 0.8.6 skapar en separat appmapp på Home Agent-kontot. Ägaren har redan en Home Agent-mapp på huvudkontot, delad med extrakontot.
 
@@ -49,7 +49,7 @@ Omfattning och acceptans:
 
 ## BL-DRIVE-004 — Verkligt läsprov: Pi → Drive → ChatGPT Plus
 
-**Prioritet:** Direkt efter BL-DRIVE-001. **Status:** Väntar på mapp-/auktoriseringslösningen.
+**Prioritet:** Pausad. **Status:** Ersatt som huvudspår av Codex-läsprovet BL-CODEX-002; tidigare acceptanskrav behålls som historik.
 
 Acceptans:
 - Koppla de fyra avsedda originalen uttryckligen till NIBE S1255 om de ännu bara ligger i Inbox.
@@ -61,7 +61,7 @@ Acceptans:
 
 ## Därefter — strukturerad retur av AI-förslag
 
-Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedda förslag via befintlig Inbox, med validering, semantisk granskning, godkännande och lokal commit. Detta är separat från läspublicering och finns inte som färdig AI-import i 0.8.6.
+Efter lyckat Codex-läsprov: specificera och implementera import av Codex-förberedda förslag via befintlig Inbox, med validering, semantisk granskning, godkännande och lokal commit. Läsleveransen 0.8.7/0.1.5 innehåller ännu inte denna funktion.
 
 ## BL-CODEX-001 — Codex session on Pi from the ChatGPT mobile app
 
@@ -71,6 +71,17 @@ Efter lyckat läsprov: specificera och implementera import av ChatGPT-förberedd
 - Automated checks cover subprocess/device/pairing boundaries, cancellation, restart, output redaction, private state and request authorization. CI additionally builds and starts native ARM64/amd64 containers without a real account, checking the actual Unix/WebSocket initialize, status and pairing RPCs on one server offline.
 - Owner acceptance completed for the connection experiment: actual Android pairing, **CODEX_PI_TEST_OK**, **session-test.txt** containing **Mobilanslutningen fungerar**, and continued conversation/file read after restart. See the dated owner-test record in the guide; this is not an automated CI claim.
 - Pi resource usage and other accounts/devices remain unmeasured. Plan any Home Agent integration separately; successful test-workspace access does not grant production data access.
-- No production Home Agent data access or AI-import integration is authorized by this test. No dependency on the unfinished Drive workstream.
+- The connection test itself grants no production data access. Owner separately authorized bounded Home Agent read integration as BL-CODEX-002 on 2026-10-26. AI-import remains separate. No dependency on the unfinished Drive workstream.
 
 See [DD-044](../decisions/DECISIONS.md) and [phone installation/test guide](../../codex_remote_test/DOCS.md).
+
+## BL-CODEX-002 — Kontrollerad läsning av husdata, PDF och bilder
+
+**Prioritet:** Aktiv första integration, godkänd av ägaren 2026-10-26. **Status:** Home Agent 0.8.7 + Codex Remote Test 0.1.5 implementerar opt-in läsåtkomst. Riktigt NIBE-/bildprov på Pi återstår.
+
+- Behåll separata tillägg. Inga produktionsvolymer eller nya host-portar till Codex.
+- Läsnyckel från telefonen, aktuellt begränsat underlag, fasta MCP-verktyg och SHA-256-verifierade explicit kopplade original.
+- Verifiera NIBE-frågan med en manual och bild, källhänvisningar, saknade uppgifter, omstart och återkallad nyckel. Mät faktisk svarstid och Pi-minne.
+- Nästa steg är validerad förslagsimport och granskning. Backup/återställning planeras separat enligt BL-DRIVE-002/003 och backupkontraktet.
+
+Se [arkitektur och telefonprov](../architecture/CODEX_HOME_AGENT_READ.md).

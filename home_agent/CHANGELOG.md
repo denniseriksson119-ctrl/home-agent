@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.7
+
+- Opt-in Codex-läsning från den anslutna mobilkonversationen: aktuellt objektindex, begränsade NIBE-uppgifter och uttryckligen kopplade original.
+- Läsnyckel skapas och återkallas från Mer → Anslut Codex. Separat autentiserad lästjänst på internt tilläggsnät, utan ny host-port eller skrivfunktion.
+- SHA-256-verifiera original och behåll databasen/källagret i Home Agent.
+- Pausa Drive-publicering som AI-huvudspår utan att radera befintliga inställningar eller filer. Backup/återställning och förslagsimport återstår.
+
 ## 0.8.6
 
 - Connect Google Drive from a phone using Google's device authorization flow: Pi requests/polls, the user enters a code and approves at Google.

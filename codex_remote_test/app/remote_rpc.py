@@ -59,7 +59,7 @@ def request(path, method, params=None, timeout=10):
                 return result
             raise RemoteError('protocol')
         connection.send(json.dumps({'id': 1, 'method': 'initialize', 'params': {
-            'clientInfo': {'name': 'home-agent-codex-test', 'title': 'Codex Remote Test', 'version': '0.1.4'},
+            'clientInfo': {'name': 'home-agent-codex-test', 'title': 'Codex Remote Test', 'version': '0.1.5'},
             'capabilities': {'experimentalApi': True}}}))
         receive(1)
         connection.send(json.dumps({'method': 'initialized'}))
