@@ -1,5 +1,27 @@
 # Home Agent Design Decisions
 
+## DD-047 — Knowledge-first presentation and staged UI review
+
+**Status:** Direction accepted by owner, 2026-10-27; final layouts and production implementation remain subject to prototype review.
+
+Retain the existing Home Graph model, immutable identity, explicit supported
+relations, source provenance and local-first writes. Normal object/system views
+prioritize registered knowledge, context, service history and actions; originals
+remain accessible evidence. Source observations and AI interpretations do not
+become committed facts merely by extraction. This refines asset-first resource
+presentation without removing identification images or linked originals.
+
+Use object and system prototypes before bounded implementation releases. A tree
+is only a navigation projection of the graph and cannot erase cross-system links.
+Keep physical location separate from membership. Do not merge similarly named
+Component/Asset records without evidence and separate review.
+
+Note edit/delete and date-only display are approved, with original creation date,
+edited marker, delete confirmation and retained audit. Broader note semantics and
+AI interpretation remain paused. See [numbered scope](../development/UI_STRUCTURE_REVIEW.md)
+and [UI contract](../ui/HOME_AGENT_UI_SPEC.md). No production migration or deployment
+is authorized by accepting the presentation direction.
+
 This log records important product/design decisions and their rationale. Git history records document changes; this file records why a direction was chosen.
 
 ## DD-001 — Context locally, actions centrally

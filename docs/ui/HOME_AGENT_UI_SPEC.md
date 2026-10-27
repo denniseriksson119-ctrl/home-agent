@@ -135,6 +135,49 @@ Technical details may include:
 
 ## Areas still to specify
 
+## Knowledge-first object and system views (owner decision 2026-10-27)
+
+Normal object pages prioritize registered house knowledge: identity/function and
+context, relevant properties and supported relationships, then service/history
+and open actions. Sources, invoices, images and manuals remain accessible as
+supporting evidence; filenames, custody/checksum status and audit do not dominate
+the everyday view. A useful identification image may remain prominent. This
+refines, rather than removes, the Asset image/document presentation below.
+
+Extraction, interpretation, proposal and accepted registration remain distinct.
+An extracted claim is not automatically a registered fact. Show material
+uncertainty/conflicts and provide a discreet route from a claim to its evidence.
+Never present a recommended action as completed service.
+
+Keep the existing System / Component / Asset model and permanent identities.
+Physical location remains separate from system membership. Explain supported
+relationships in ordinary language; do not turn a generic link or shared name
+into a specific technical relation. The same object is reachable by room,
+system and equipment views without creating duplicate records.
+
+Prototype direction: (A) an object page with concise context, knowledge and
+contextual note controls; (B) a system overview with a navigable hierarchy and
+detail panel. A hierarchy is a projection of the graph, not a requirement that
+each object have only one parent/system. Preserve cross-system relationships.
+Mobile must support navigating from overview to details and back without losing
+selection. A separate structure-review table is a later candidate, not a required
+part of the first delivery. Review suggestions do not change registered facts.
+
+For note controls, retain the original creation date, display only the calendar
+date (year/month/day), and show a discreet edited marker after a text change.
+Keep precise machine-safe timestamps and edit/delete audit internally. Deletion
+requires confirmation; preserve required history/provenance rather than assuming
+hard deletion. Inline edit provides Save and Cancel.
+
+The broader role of notes remains deferred: reminder versus structured
+observation, multi-object links, event date and AI interpretation are not decided
+by these controls. Existing contextual manual notes remain usable without AI.
+
+Delivery is staged: prototype/review, decide layout, update contracts, then
+implement and verify one bounded change at a time. Approval of this direction is
+not approval of every prototype detail, a data migration or production deployment.
+See [numbered review scope](../development/UI_STRUCTURE_REVIEW.md).
+
 Home, floor, asset, system/component, document, maintenance, activity/history, search, central Att göra, central + Lägg till, AI proposal/review, edit/delete semantics, empty/loading/error states, responsive layout, accessibility, language and formatting.
 
 ## Design process
