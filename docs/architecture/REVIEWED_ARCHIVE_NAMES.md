@@ -1,6 +1,6 @@
 # Granskade arkivnamn och lokal placering
 
-Leverans: Home Agent **0.8.11**. Befintlig Codex Remote Test **0.1.7** används
+Leverans: Home Agent **0.8.12**. Befintlig Codex Remote Test **0.1.7** används
 för rapporten; ingen ny nyckel eller utökad läs-/skrivbehörighet krävs.
 Detta genomför arkitekturens läsbara namn för granskade lokala original.
 Ingen namnändring sker vid installation, uppstart eller en vanlig läsning.
@@ -54,7 +54,22 @@ betydelsen och måste skriva en användbar beskrivning. Ingen ny faktaextraktion
 3. **Godkänn och genomför dessa namnbyten** startar en bakgrundskörning, en fil
    åt gången. Planen kan öppnas igen för status och återupptagning efter avbrott.
 4. Kontrollera resultatet i **Mer → Arkivkontroll** och öppna originalet genom
-   dess befintliga dokument-/utrustningslänk. Fortsätt därefter med nästa sida.
+   dess befintliga dokument-/utrustningslänk. Fortsätt därefter med **Granska nästa omgång**.
+
+Från 0.8.12 visar standardlistan bara kvarvarande namn att granska, med antal
+kvar, färdiga och totalt. Ett redan arkitekturenligt namn på rätt plats med
+entydig kategori, lokal custody och registrerad SHA-256 räknas som färdigt;
+även `undated` räknas. Befintliga namn från 0.8.11 känns igen utan ny körning.
+Urvalet filtreras **före** sidindelning (högst tio synliga källor), så nästa
+omgång inte återanvänder färdiga filer. Högst 2000 källor stöds i denna vy.
+En förhandsgranskad eller misslyckad ändring lämnar källan kvar i arbetslistan.
+
+**Visa färdiga arkivnamn** öppnar en separat vy för frivillig omgranskning.
+En klar plan länkar till **Granska nästa omgång**. Den skrivskyddade
+arkivkontrollen behåller alla registrerade källor. Arbetslistans räknare gäller
+namnsättning enligt metadata, inte filernas existens eller checksummeverifiering;
+dessa kontroller hör fortsatt till arkivkontrollen. Enbart öppning av listan
+ändrar inga data, filer eller sparade planer.
 
 CSRF och origin-kontroll krävs vid båda POST-stegen. Inga godkännandekryssrutor
 är förvalda. Pågående paketimport blockerar start av namnplan; pågående namnbyte
@@ -113,7 +128,7 @@ arkitekturnamnsättning. Ingen fil behöver importeras igen för att få ett ark
 
 ## Ägarens Pi-prov
 
-1. Uppdatera Home Agent till 0.8.11. Bekräfta att enbart installationen inte
+1. Uppdatera Home Agent till 0.8.12. Bekräfta att enbart installationen inte
    ändrar namn, källantal, ID:n, kopplingar eller innehåll.
 2. Välj en bild med granskat datum och en manual med uttryckligen okänt datum.
    Kontrollera gammal/ny sökväg och beskrivning före det andra godkännandet.

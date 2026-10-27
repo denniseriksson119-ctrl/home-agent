@@ -208,10 +208,94 @@ class NamingTests(unittest.TestCase):
     def test_existing_archive_choice_is_not_replaced_by_old_filename_guess(self):
         plan = self.plan(when='2027-01-03', description='Owner reviewed description')
         self.assertEqual(self.apply(plan), 'complete')
-        items, _ = names.candidates(self.db, self.sources)
+        items = names.candidates(self.db, self.sources, completed=True)['items']
         self.assertEqual(items[0]['date'], '2027-01-03')
         self.assertEqual(items[0]['description'], 'owner-reviewed-description')
         self.assertEqual(items[0]['date_basis'], 'existing_archive_name')
+
+    def test_completed_dated_and_unknown_names_leave_worklist_without_mutation(self):
+        self.assertEqual(self.apply(self.plan()), 'complete')
+        before = self.db.read_bytes(), Path(self.storage()).read_bytes()
+        listing = names.candidates(self.db, self.sources)
+        self.assertEqual((listing['remaining'], listing['completed'], listing['total']), (0, 1, 1))
+        self.assertEqual(listing['items'], [])
+        self.assertIsNone(listing['next_after'])
+        self.assertEqual(names.candidates(self.db, self.sources, completed=True)['items'][0]['id'], 'src-01')
+        self.assertEqual(before, (self.db.read_bytes(), Path(self.storage()).read_bytes()))
+        self.assertEqual(self.apply(self.plan(when='', unknown=True)), 'complete')
+        self.assertEqual(names.candidates(self.db, self.sources)['items'], [])
+        self.assertEqual(names.candidates(self.db, self.sources, completed=True)['completed'], 1)
+        self.assertEqual(len(archive_audit.report(self.db, self.sources)['entries']), 1)
+
+    def test_filter_precedes_pagination_and_next_batch_advances(self):
+        for number in range(2, 26):
+            sid = 'src-%02d' % number
+            path = source_archive.destination(self.sources, sid, 'manual.pdf', 'application/pdf')
+            path.write_bytes(self.body + sid.encode())
+            self.add_source(sid, path)
+        first = names.candidates(self.db, self.sources)
+        self.assertEqual([x['id'] for x in first['items']], ['src-%02d' % n for n in range(1, 11)])
+        # Simulate two approved batches, including an explicitly unknown date.
+        for start, end in ((1, 11), (11, 13)):
+            choices = [dict(source_id='src-%02d' % n, date='' if n == 1 else '2026-01-02',
+                            unknown_date=n == 1, description='Synthetic source') for n in range(start, end)]
+            plan = names.build_plan(self.db, self.sources, choices)
+            for item in plan['items']:
+                self.assertEqual(names.apply_item(self.db, self.sources, plan['id'], item), 'complete')
+        pending = names.candidates(self.db, self.sources)
+        self.assertEqual((pending['remaining'], pending['completed'], pending['total']), (13, 12, 25))
+        self.assertEqual([x['id'] for x in pending['items']], ['src-%02d' % n for n in range(13, 23)])
+        self.assertEqual(pending['next_after'], 'src-22')
+        last = names.candidates(self.db, self.sources, pending['next_after'])
+        self.assertEqual([x['id'] for x in last['items']], ['src-23', 'src-24', 'src-25'])
+        self.assertIsNone(last['next_after'])
+        done = names.candidates(self.db, self.sources, completed=True)
+        self.assertEqual(done['next_after'], 'src-10')
+        self.assertEqual([x['id'] for x in names.candidates(self.db, self.sources, done['next_after'], completed=True)['items']], ['src-11', 'src-12'])
+        body = archive_names_ui.page(self.controller, self.db, self.sources, self.directory, 'view=completed').decode()
+        self.assertIn('after=src-10&amp;view=completed', body)
+        self.assertNotIn("value='src-13'", body)
+
+    def test_preview_and_failed_rename_stay_pending(self):
+        self.plan()
+        self.assertEqual(names.candidates(self.db, self.sources)['remaining'], 1)
+        self.path.write_bytes(b'changed bytes')
+        with self.assertRaises(ValueError):
+            self.apply(self.plan())
+        listing = names.candidates(self.db, self.sources)
+        self.assertEqual(listing['remaining'], 1)
+        self.assertEqual(listing['completed'], 0)
+
+    def test_correct_filename_in_wrong_folder_is_still_pending(self):
+        self.assertEqual(self.apply(self.plan()), 'complete')
+        target = Path(self.storage())
+        wrong = self.sources / target.name
+        target.rename(wrong)
+        with sqlite3.connect(self.db) as db:
+            db.execute("UPDATE source SET storage_ref=? WHERE source_id='src-01'", (str(wrong),))
+        self.assertEqual(names.candidates(self.db, self.sources)['remaining'], 1)
+
+    def test_worklist_ui_empty_completion_and_validation(self):
+        self.directory.mkdir()
+        body = archive_names_ui.page(self.controller, self.db, self.sources, self.directory).decode()
+        self.assertIn('Återstår att granska: 1. Färdiga arkivnamn: 0. Totalt: 1.', body)
+        plan = self.plan(when='', unknown=True)
+        self.assertEqual(self.apply(plan), 'complete')
+        plan['items'][0]['status'] = 'complete'
+        source_migration.save_plan(self.directory, plan)
+        body = archive_names_ui.page(self.controller, self.db, self.sources, self.directory).decode()
+        self.assertIn('Inga filer återstår att granska.', body)
+        self.assertNotIn("name='selected'", body)
+        self.assertNotIn('<button>Förhandsgranska valda namn</button>', body)
+        self.assertIn('Visa färdiga arkivnamn', body)
+        done = archive_names_ui.page(self.controller, self.db, self.sources, self.directory, 'view=completed').decode()
+        self.assertIn("name='selected' value='src-01'", done)
+        self.assertIn('Dessa behöver inte behandlas igen.', done)
+        status = archive_names_ui.page(self.controller, self.db, self.sources, self.directory, 'plan=' + plan['id']).decode()
+        self.assertIn('Granska nästa omgång', status)
+        for query in ('view=bad', 'view=completed&view=pending', 'after=../bad'):
+            with self.assertRaises(ValueError):
+                archive_names_ui.page(self.controller, self.db, self.sources, self.directory, query)
 
     def test_shared_old_reference_is_preserved_as_cleanup_pending(self):
         with sqlite3.connect(self.db) as db:

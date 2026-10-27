@@ -13,7 +13,10 @@ import yaml
 
 def page(controller, db_path, root, directory, query='', error=None):
     args = parse_qs(query, strict_parsing=True)
-    if set(args) - {'after', 'plan'} or any(len(v) != 1 for v in args.values()):
+    if set(args) - {'after', 'plan', 'view'} or any(len(v) != 1 for v in args.values()):
+        raise ValueError('Ogiltig vy.')
+    view = args.get('view', ['pending'])[0]
+    if view not in ('pending', 'completed'):
         raise ValueError('Ogiltig vy.')
     body = '<h1>Granska arkivnamn</h1><p>Välj högst tio original åt gången. Granska datum och beskrivning; nästa steg visar exakt gammal och ny sökväg innan något ändras.</p>'
     if 'plan' in args:
@@ -39,8 +42,21 @@ def page(controller, db_path, root, directory, query='', error=None):
             body += ("<form method='post' action='/archive/names'><input type='hidden' name='csrf' value='%s'>"
                      "<input type='hidden' name='plan' value='%s'><button name='action' value='apply'>Godkänn och genomför dessa namnbyten</button></form>" % (ui.esc(controller.csrf), ui.esc(plan['id'])))
         body += "<p><a href='/archive/names?plan=%s'>Uppdatera status</a></p>" % ui.esc(plan['id'])
+        if all(x['status'] in ('complete', 'unchanged') for x in plan['items']):
+            body += "<p>Omgången är klar.</p><p><a href='/archive/names'>Granska nästa omgång</a></p>"
     else:
-        items, after = names.candidates(db_path, root, args.get('after', [None])[0])
+        listing = names.candidates(db_path, root, args.get('after', [None])[0], completed=view == 'completed')
+        items, after = listing['items'], listing['next_after']
+        body += '<p>Återstår att granska: %d. Färdiga arkivnamn: %d. Totalt: %d.</p>' % (
+            listing['remaining'], listing['completed'], listing['total'])
+        if view == 'completed':
+            body += "<h2>Färdiga arkivnamn</h2><p>Dessa behöver inte behandlas igen. Välj bara om du vill ändra ett tidigare granskat namn.</p><p><a href='/archive/names'>Visa filer som återstår</a></p>"
+        else:
+            body += "<h2>Återstår att granska</h2><p><a href='/archive/names?view=completed'>Visa färdiga arkivnamn</a></p>"
+        if not items:
+            body += '<p>%s</p>' % ('Inga fler filer på den här sidan.' if args.get('after') else
+                'Inga färdiga arkivnamn ännu.' if view == 'completed' else 'Inga filer återstår att granska.')
+
         body += ("<form method='post' action='/archive/names'><input type='hidden' name='csrf' value='%s'>"
                  "<input type='hidden' name='action' value='preview'>" % ui.esc(controller.csrf))
         for item in items:
@@ -61,9 +77,11 @@ def page(controller, db_path, root, directory, query='', error=None):
             if not item['description']:
                 body += '<p>En entydig dokumentbeskrivning saknas; skriv en beskrivning innan källan väljs.</p>'
             body += '<p>Arkivkategori: %s</p></section>' % ui.esc(', '.join(item['folders']))
-        body += '<button>Förhandsgranska valda namn</button></form>'
+        if items:
+            body += '<button>Förhandsgranska valda namn</button>'
+        body += '</form>'
         if after:
-            body += "<p><a href='/archive/names?%s'>Nästa sida</a></p>" % ui.esc(urlencode({'after': after}))
+            body += "<p><a href='/archive/names?%s'>Nästa sida</a></p>" % ui.esc(urlencode({'after': after, 'view': view}))
         for file in sorted(directory.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:10]:
             body += "<p><a href='/archive/names?plan=%s'>Öppna sparad namnplan %s</a></p>" % (ui.esc(file.stem), ui.esc(file.stem[:8]))
     body += "<p><a href='/archive/names'>Tillbaka till källistan</a> · <a href='/archive/check'>Skrivskyddad arkivkontroll</a></p>"

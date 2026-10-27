@@ -106,6 +106,15 @@ def seed():
         if attempt == 79:
             raise AssertionError('Reviewed archive names did not complete')
         time.sleep(.25)
+    # Completed names disappear from the default owner worklist, including undated.
+    with opener.open('http://127.0.0.1:8099/archive/names') as response:
+        body = response.read().decode()
+        assert 'Återstår att granska: 0. Färdiga arkivnamn: 2. Totalt: 2.' in body
+        assert "name='selected'" not in body
+    with opener.open('http://127.0.0.1:8099/archive/names?view=completed') as response:
+        body = response.read()
+        assert b"name='selected' value='ci-manual'" in body
+        assert b"name='selected' value='ci-photo'" in body
     Path('/data/ci-db-sha').write_text(hashlib.sha256(server.DB_FILE.read_bytes()).hexdigest())
     print('PASS: real setup GET and CSRF-authorized opaque-origin POST create read key; synthetic PDF and PNG seeded')
 

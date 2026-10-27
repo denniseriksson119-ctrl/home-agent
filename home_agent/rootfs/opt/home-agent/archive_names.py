@@ -88,22 +88,41 @@ def suggestion(record):
     return dict(date=when, date_basis=basis, description=description)
 
 
-def candidates(db_path, root, after=None):
+def candidates(db_path, root, after=None, completed=False):
+    """Snapshot of the naming worklist; no file reads or mutation.
+
+    Completion means an unambiguous, locally registered archive destination,
+    not verification of the physical file. The archive audit keeps that job.
+    Filter before pagination so completed IDs cannot consume the next batch.
+    """
     if after is not None and not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', after):
         raise ValueError('Ogiltig sidmarkör.')
     with closing(sqlite3.connect(Path(db_path).resolve().as_uri() + '?mode=ro', uri=True)) as db:
         db.execute('BEGIN')
-        ids = [r[0] for r in db.execute('SELECT source_id FROM source WHERE source_id>? ORDER BY source_id LIMIT 11', (after or '',))]
-        items = []
-        for sid in ids[:10]:
+        ids = [r[0] for r in db.execute('SELECT source_id FROM source ORDER BY source_id LIMIT 2001')]
+        if len(ids) > 2000:
+            raise ValueError('För många källor för namnlistan (högst 2000).')
+        items, remaining, done = [], 0, 0
+        for sid in ids:
             record = metadata(db, sid)
-            item = dict(id=sid, name=record['original_name'], **suggestion(record), folders=record['folders'])
             try:
-                item['from'] = relative(root, record['storage'])
+                current = relative(root, record['storage'])
             except ValueError:
-                item['from'] = None
-            items.append(item)
-    return items, ids[9] if len(ids) > 10 else None
+                current = None
+            layout, name, _ = archive.name_checks(current or '', sid, record['original_name'],
+                                                  record['media'], record['folders'])
+            finished = (current is not None and len(record['folders']) == 1
+                        and record['custody'] == 'local_verified'
+                        and re.fullmatch(r'[0-9a-f]{64}', record['sha256'] or '') is not None
+                        and layout in ('architectural', 'architectural_undated') and name == layout)
+            done += int(finished)
+            remaining += int(not finished)
+            if finished != completed or sid <= (after or '') or len(items) >= 11:
+                continue
+            items.append(dict(id=sid, name=record['original_name'], **suggestion(record),
+                              folders=record['folders'], **{'from': current}))
+    return dict(items=items[:10], next_after=items[9]['id'] if len(items) > 10 else None,
+                remaining=remaining, completed=done, total=len(ids))
 
 
 def build_plan(db_path, root, choices):
