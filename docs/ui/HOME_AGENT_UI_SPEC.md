@@ -178,6 +178,23 @@ implement and verify one bounded change at a time. Approval of this direction is
 not approval of every prototype detail, a data migration or production deployment.
 See [numbered review scope](../development/UI_STRUCTURE_REVIEW.md).
 
+### Water prototype: Flow / Function / Location (2026-10-27)
+
+Review item 6.1 and 8.1 through three selectable projections of the same objects:
+**Flöde**, **Funktion**, **Placering**. Keep object selection when switching
+perspectives and use a shared detail panel. Show branches/alternative paths in
+flow, purpose and member roles in function, and spatial grouping in location.
+Flow diagrams depict stored topology, not live values or active valve states.
+Persisted functional membership and a view's temporary grouping are distinct.
+
+Prototype examples may use a pressure arrangement and a filter/bypass to test
+overlapping memberships. All invented topology, rooms and history must be clearly
+labelled synthetic; these are not assertions about the owner's installed system.
+Show an illustrative physical change separately from a knowledge correction,
+including unknown effective dates. Production history requires supported data.
+Use mobile-readable stacked layouts and explicit relationship text, not only
+colour, indentation or connecting lines. Layout acceptance is still pending.
+
 Home, floor, asset, system/component, document, maintenance, activity/history, search, central Att göra, central + Lägg till, AI proposal/review, edit/delete semantics, empty/loading/error states, responsive layout, accessibility, language and formatting.
 
 ## Design process

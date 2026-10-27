@@ -40,3 +40,21 @@ acceptance. This documentation-only change needs no add-on version bump.
 
 The private HTML prototype is exploratory, not the production UI contract. Final
 UI details and exact release boundaries remain to be agreed after review.
+
+## 6.1 / 8.1 — Water relationships and projections
+
+Owner approved proceeding with this direction on 2026-10-27: independently model
+flow, functional association, location and system membership; allow overlapping
+groups and changing descriptions; preserve physical-change and knowledge-correction
+history separately. Develop a focused Water prototype with Flow / Function /
+Location, before runtime implementation. It uses synthetic topology/locations.
+
+Review one scenario at a time: select the same valve in all three perspectives;
+inspect its membership versus flow role and location; inspect a bypass branch;
+compare a physical relocation to a corrected description. Do not treat prototype
+membership, valve position or a placeholder date as registered house knowledge.
+
+Before a schema implementation proposal, inspect existing relation capabilities,
+then specify missing semantics, evidence, endpoint/port constraints, validity and
+correction history. No production relinking, group creation or migration is
+authorized by this prototype step. See DATA_MODEL.md section 14.

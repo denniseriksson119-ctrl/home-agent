@@ -1,5 +1,21 @@
 # Home Agent Design Decisions
 
+## DD-048 — Independent relationship perspectives and temporal knowledge
+
+**Status:** Design/prototype direction accepted by owner, 2026-10-27 ("vi kör på detta"); runtime schema and final UI pending review.
+
+Use the same permanent objects in flow, functional, location and system-membership
+perspectives. Support overlapping functional groups and branching/alternative
+flow paths rather than encoding the house as one static tree. Group purpose,
+flow topology and co-location do not imply one another. Distinguish actual
+configuration changes from improved/corrected descriptions; preserve effective
+validity and knowledge/audit history with unknown dates left unknown.
+
+Start with a Water prototype showing Flow / Function / Location. Synthetic
+examples do not establish house facts. Detailed design and implementation gates
+are recorded in DATA_MODEL.md section 14 and UI_STRUCTURE_REVIEW.md items 6.1/8.1.
+No runtime migration or production relationship edits are included.
+
 ## DD-047 — Knowledge-first presentation and staged UI review
 
 **Status:** Direction accepted by owner, 2026-10-27; final layouts and production implementation remain subject to prototype review.
