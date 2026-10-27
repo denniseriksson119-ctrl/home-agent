@@ -83,3 +83,48 @@ Important history is event-based. Edits do not silently erase relevant prior sta
 
 ## 13. Storage independence
 SQLite is the current implementation, not the domain model. Schema migrations are deterministic/versioned. YAML is bootstrap/import/export/diagnostic material, not runtime identity or operational source of truth.
+
+## 14. Relationship perspectives and change over time
+
+Owner-approved design direction, 2026-10-27; this section is a domain contract,
+not a statement that the current schema or read API implements every capability.
+
+Model flow/topology, functional association, physical location and system
+membership as distinct relationship meanings. A Component or Asset may participate
+in several simultaneously. A room view, system view or functional view reuses the
+same permanent object identity. No unique-parent tree is imposed on the graph.
+
+Flow supports direction, branches and alternative paths. Where supported by
+evidence, endpoints/ports and connection roles must distinguish physically
+different connections. Do not infer an operating valve position, active path or
+live flow from a stored connection. A bypass can be an alternative path and belong
+to a functional arrangement without duplicating its physical objects.
+
+A durable functional grouping has identity and explicit purpose/membership;
+it is not synonymous with a System, a physical product or a room. It must not
+force an Asset/Component duplicate for each group. Whether it is represented by a
+new entity type or existing compatible structure remains an implementation
+decision requiring schema review. A temporary UI grouping/filter is a projection,
+not an automatically persisted grouping or new technical relationship.
+
+Important relation assertions carry identity, typed endpoints, direction where
+meaningful, supporting evidence/user confirmation and confidence. Preserve
+supported conflicts and distinguish proposed from accepted assertions. Group
+membership does not itself prove a flow connection or physical location.
+
+Distinguish two time dimensions:
+- **Validity in the house:** when a physical configuration or membership applied.
+- **Knowledge history:** when Home Agent learned, accepted or corrected the claim.
+
+An actual installation change ends/supersedes the prior configuration and records
+the new one without destroying the old history. A description correction records
+revised knowledge and its reason/evidence, not a fictitious physical modification
+on the correction date. Unknown effective dates remain unknown; do not substitute
+import, capture or edit timestamps. Label historical reconstructions with their
+coverage/uncertainty. Renaming or refining a group does not change its identity;
+a genuine split/merge requires explicit review and traceable relations.
+
+Before runtime implementation, specify relation vocabulary, endpoint/port rules,
+constraints by relation type, temporal storage, revision/correction semantics and
+backward-compatible migration. Do not infer or rewrite existing house topology
+from names, room co-location or this design decision.

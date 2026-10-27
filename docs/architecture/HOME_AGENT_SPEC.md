@@ -63,6 +63,14 @@ Tekniska samband representeras med explicita referenser/relationer, exempelvis u
 
 Topologi får inte konstrueras enbart från vad som tekniskt brukar vara sannolikt. Saknade komponenter/relationer lämnas okända tills de kan stödjas.
 
+Flöde/topologi, funktionell samhörighet, fysisk placering och systemtillhörighet
+är separata perspektiv på samma objekt. Funktionsgrupper kan samla exempelvis
+tryckutrustning eller filterarrangemang utan att skapa kopior av deras delar.
+Vyer kan växla perspektiv; en trädpresentation begränsar inte grafens relationer.
+Skilj verkliga ändringar av anläggningen från rättningar av vår kunskap om den.
+Normativ precisering och återstående implementationsbeslut finns i
+`DATA_MODEL.md`, avsnitt 14. Detta inför inte automatiskt ett nytt databasschema.
+
 ## 7. Tillförlitlighet
 Home Agent får aldrig hitta på saknade fakta. När relevant används Confirmed, Likely och Unknown. Viktiga uppgifter bör kunna spåras till källa. Konflikter synliggörs, inte löses tyst.
 
