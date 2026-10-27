@@ -162,3 +162,10 @@ unknown-date approval when no date is known. A second preview shows exact old
 and new relative paths before owner-approved local renaming. Source identity,
 original names, bytes and object links remain unchanged. The read-only archive
 report distinguishes architectural, technical intake and legacy names.
+
+In 0.8.12 the default naming worklist filters completed architectural names
+(including explicitly undated names) before pagination, shows remaining/completed/
+total counts, and links from a completed plan to the next batch. Previously
+renamed files are recognized without another rename. A separate **Visa färdiga
+arkivnamn** view permits deliberate review; the archive report still includes
+all sources. Worklist counts concern metadata naming, not physical file health.
